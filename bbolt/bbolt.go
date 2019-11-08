@@ -110,9 +110,16 @@ func (s Store) Get(k string, v interface{}) (found bool, err error) {
 }
 
 func (s Store) Delete(k string) error {
-	panic("implement me")
+	if err := util.CheckKey(k); err != nil {
+		return err
+	}
+
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(s.bucketName))
+		return b.Delete([]byte(k))
+	})
 }
 
 func (s Store) Close() error {
-	panic("implement me")
+	return s.db.Close()
 }
