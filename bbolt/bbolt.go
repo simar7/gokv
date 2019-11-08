@@ -84,6 +84,26 @@ func (s Store) Set(k string, v interface{}) error {
 	return nil
 }
 
+func (s Store) BatchSet(k string, v interface{}) error {
+	if err := util.CheckKeyAndValue(k, v); err != nil {
+		return err
+	}
+
+	data, err := s.codec.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	err = s.db.Batch(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(s.bucketName))
+		return b.Put([]byte(k), data)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s Store) Get(k string, v interface{}) (found bool, err error) {
 	if err := util.CheckKeyAndValue(k, v); err != nil {
 		return false, err

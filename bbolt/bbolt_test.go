@@ -1,8 +1,10 @@
 package bbolt
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,6 +30,29 @@ func TestStore_Set(t *testing.T) {
 
 	// set
 	assert.NoError(t, s.Set("foo", "bar"))
+
+	// close
+	assert.NoError(t, s.Close())
+}
+
+func TestStore_BatchSet(t *testing.T){
+	s, f, err := setupStore()
+	defer func() {
+		_ = f.Close()
+		_ = os.RemoveAll(f.Name())
+	}()
+	assert.NoError(t, err)
+
+	// batch set
+	var wg sync.WaitGroup
+	for i:=0; i<=5; i++{
+		wg.Add(1)
+		go func(i int) {
+			assert.NoError(t, s.BatchSet(fmt.Sprintf("foo%d", i), "bar"))
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
 
 	// close
 	assert.NoError(t, s.Close())
