@@ -3,6 +3,8 @@ package dynamodb
 import (
 	"errors"
 
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -38,7 +40,7 @@ var DefaultOptions = Options{
 }
 
 type Store struct {
-	c         *awsdynamodb.DynamoDB
+	c         dynamodbiface.DynamoDBAPI
 	tableName string
 	codec     encoding.Codec
 }
