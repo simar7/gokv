@@ -110,7 +110,7 @@ func (s Store) Set(k string, v interface{}) error {
 		B: data,
 	}
 	putItemInput := awsdynamodb.PutItemInput{
-		TableName: &s.tableName,
+		TableName: aws.String(s.tableName),
 		Item:      item,
 	}
 	_, err = s.c.PutItem(&putItemInput)
@@ -134,7 +134,7 @@ func (s Store) Get(k string, v interface{}) (found bool, err error) {
 		S: &k,
 	}
 	getItemInput := awsdynamodb.GetItemInput{
-		TableName: &s.tableName,
+		TableName: aws.String(s.tableName),
 		Key:       key,
 	}
 	getItemOutput, err := s.c.GetItem(&getItemInput)

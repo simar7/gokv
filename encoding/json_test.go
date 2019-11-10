@@ -1,7 +1,6 @@
 package encoding
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,7 +40,6 @@ func TestJSONCodec_Marshal(t *testing.T) {
 		default:
 			assert.NoError(t, err, tc.name)
 			assert.NotNil(t, actualData, tc.name)
-			fmt.Println(">>> ", actualData)
 		}
 	}
 }
