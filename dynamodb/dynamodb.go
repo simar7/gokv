@@ -153,7 +153,21 @@ func (s Store) Get(k string, v interface{}) (found bool, err error) {
 }
 
 func (s Store) Delete(k string) error {
-	panic("implement me")
+	if err := util.CheckKey(k); err != nil {
+		return err
+	}
+
+	key := make(map[string]*awsdynamodb.AttributeValue)
+	key[keyAttrName] = &awsdynamodb.AttributeValue{
+		S: &k,
+	}
+
+	deleteItemInput := awsdynamodb.DeleteItemInput{
+		TableName: aws.String(s.tableName),
+		Key:       key,
+	}
+	_, err := s.c.DeleteItem(&deleteItemInput)
+	return err
 }
 
 func (s Store) Close() error {

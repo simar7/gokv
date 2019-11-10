@@ -14,8 +14,9 @@ import (
 
 type mockDynamoDB struct {
 	dynamodbiface.DynamoDBAPI
-	putItem func(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
-	getItem func(*dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error)
+	putItem    func(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
+	getItem    func(*dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error)
+	deleteItem func(*dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error)
 }
 
 func (md mockDynamoDB) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
@@ -32,6 +33,14 @@ func (md mockDynamoDB) GetItem(input *dynamodb.GetItemInput) (*dynamodb.GetItemO
 	}
 
 	return &dynamodb.GetItemOutput{}, nil
+}
+
+func (md mockDynamoDB) DeleteItem(input *dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error) {
+	if md.deleteItem != nil {
+		return md.deleteItem(input)
+	}
+
+	return &dynamodb.DeleteItemOutput{}, nil
 }
 
 func TestStore_Set(t *testing.T) {
@@ -75,4 +84,21 @@ func TestStore_Get(t *testing.T) {
 	assert.True(t, found)
 	assert.Equal(t, "bar", actualValue)
 	assert.NoError(t, s.Close())
+}
+
+func TestStore_Delete(t *testing.T) {
+	s, err := NewStore(Options{
+		Region:         "ca-test-1",
+		TableName:      "gokvtesttable",
+		CustomEndpoint: "https://foo.bar/test",
+	})
+	assert.NoError(t, err)
+	s.c = mockDynamoDB{deleteItem: func(input *dynamodb.DeleteItemInput) (output *dynamodb.DeleteItemOutput, e error) {
+		assert.Equal(t, "foo", *input.Key[keyAttrName].S)
+		return &dynamodb.DeleteItemOutput{}, nil
+	}}
+
+	assert.NoError(t, s.Delete("foo"))
+	assert.NoError(t, s.Close())
+
 }
