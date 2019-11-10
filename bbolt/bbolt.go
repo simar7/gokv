@@ -1,9 +1,16 @@
 package bbolt
 
 import (
+	"errors"
+	"reflect"
+
 	"github.com/simar7/gokv/encoding"
 	"github.com/simar7/gokv/util"
 	bolt "go.etcd.io/bbolt"
+)
+
+var (
+	ErrMultipleKVNotSupported = errors.New("multiple kv pair not supported")
 )
 
 type Options struct {
@@ -84,19 +91,35 @@ func (s Store) Set(k string, v interface{}) error {
 	return nil
 }
 
-func (s Store) BatchSet(k string, v interface{}) error {
-	if err := util.CheckKeyAndValue(k, v); err != nil {
+// boltdb batch operations work on single kv pair
+// but across multiple go routines. As a result, in this case
+// we cannot accept multiple kv pairs.
+func (s Store) BatchSet(k []string, v interface{}) error {
+	if len(k) > 1 {
+		return ErrMultipleKVNotSupported
+	}
+
+	switch reflect.TypeOf(v).Kind() {
+	case reflect.Slice:
+		values := reflect.ValueOf(v)
+		if values.Len() > 1 {
+			return ErrMultipleKVNotSupported
+		}
+	}
+
+	value := reflect.ValueOf(v).Index(0).Interface()
+	if err := util.CheckKeyAndValue(k[0], value); err != nil {
 		return err
 	}
 
-	data, err := s.codec.Marshal(v)
+	data, err := s.codec.Marshal(value)
 	if err != nil {
 		return err
 	}
 
 	err = s.db.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
-		return b.Put([]byte(k), data)
+		return b.Put([]byte(k[0]), data)
 	})
 	if err != nil {
 		return err

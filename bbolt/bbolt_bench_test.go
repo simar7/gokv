@@ -2,14 +2,14 @@ package bbolt
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-
-func benchmarkSet(j int, b *testing.B){
+func benchmarkSet(j int, b *testing.B) {
 	s, f, err := setupStore()
 	defer func() {
 		_ = f.Close()
@@ -17,10 +17,10 @@ func benchmarkSet(j int, b *testing.B){
 	}()
 	assert.NoError(b, err)
 
-	for i:=0; i<b.N; i++{
+	for i := 0; i < b.N; i++ {
 		// batch set
 		var wg sync.WaitGroup
-		for i:=0; i<=j; i++ {
+		for i := 0; i <= j; i++ {
 			wg.Add(1)
 			go func(i int) {
 				assert.NoError(b, s.Set(fmt.Sprintf("foo%d", i), "bar"))
@@ -32,7 +32,7 @@ func benchmarkSet(j int, b *testing.B){
 	assert.NoError(b, s.Close())
 }
 
-func benchmarkBatchSet(j int, b *testing.B){
+func benchmarkBatchSet(j int, b *testing.B) {
 	s, f, err := setupStore()
 	defer func() {
 		_ = f.Close()
@@ -40,13 +40,13 @@ func benchmarkBatchSet(j int, b *testing.B){
 	}()
 	assert.NoError(b, err)
 
-	for i:=0; i<b.N; i++{
+	for i := 0; i < b.N; i++ {
 		// batch set
 		var wg sync.WaitGroup
-		for i:=0; i<=j; i++ {
+		for i := 0; i <= j; i++ {
 			wg.Add(1)
 			go func(i int) {
-				assert.NoError(b, s.BatchSet(fmt.Sprintf("foo%d", i), "bar"))
+				assert.NoError(b, s.BatchSet([]string{fmt.Sprintf("foo%d", i)}, "bar"))
 				wg.Done()
 			}(i)
 		}

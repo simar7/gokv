@@ -35,7 +35,7 @@ func TestStore_Set(t *testing.T) {
 	assert.NoError(t, s.Close())
 }
 
-func TestStore_BatchSet(t *testing.T){
+func TestStore_BatchSet(t *testing.T) {
 	s, f, err := setupStore()
 	defer func() {
 		_ = f.Close()
@@ -45,14 +45,23 @@ func TestStore_BatchSet(t *testing.T){
 
 	// batch set
 	var wg sync.WaitGroup
-	for i:=0; i<=5; i++{
+	for i := 0; i <= 5; i++ {
 		wg.Add(1)
 		go func(i int) {
-			assert.NoError(t, s.BatchSet(fmt.Sprintf("foo%d", i), "bar"))
+			assert.NoError(t, s.BatchSet([]string{fmt.Sprintf("foo%d", i)}, []string{"bar"}))
 			wg.Done()
 		}(i)
 	}
 	wg.Wait()
+
+	// check for set values
+	for i := 0; i <= 5; i++ {
+		var actualOutput string
+		found, err := s.Get(fmt.Sprintf("foo%d", i), &actualOutput)
+		assert.NoError(t, err)
+		assert.True(t, found)
+		assert.Equal(t, "bar", actualOutput)
+	}
 
 	// close
 	assert.NoError(t, s.Close())

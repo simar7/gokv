@@ -120,7 +120,7 @@ func (s Store) Set(k string, v interface{}) error {
 	return nil
 }
 
-func (s Store) BatchSet(k string, v interface{}) error {
+func (s Store) BatchSet(k []string, v interface{}) error {
 	panic("implement me")
 }
 
