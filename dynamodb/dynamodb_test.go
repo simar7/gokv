@@ -50,7 +50,11 @@ func TestStore_Set(t *testing.T) {
 		CustomEndpoint: "https://foo.bar/test",
 	})
 	assert.NoError(t, err)
-	s.c = mockDynamoDB{}
+	s.c = mockDynamoDB{putItem: func(input *dynamodb.PutItemInput) (output *dynamodb.PutItemOutput, e error) {
+		assert.Equal(t, "foo", *input.Item[keyAttrName].S)
+		assert.Equal(t, []byte(`"bar"`), input.Item[valAttrName].B)
+		return &dynamodb.PutItemOutput{}, nil
+	}}
 
 	assert.NoError(t, s.Set("foo", "bar"))
 	assert.NoError(t, s.Close())
@@ -65,6 +69,7 @@ func TestStore_Get(t *testing.T) {
 	assert.NoError(t, err)
 	s.c = mockDynamoDB{
 		getItem: func(input *dynamodb.GetItemInput) (output *dynamodb.GetItemOutput, e error) {
+			assert.Equal(t, "foo", *input.Key[keyAttrName].S)
 			return &dynamodb.GetItemOutput{
 				Item: map[string]*dynamodb.AttributeValue{
 					keyAttrName: {
