@@ -1,10 +1,11 @@
 package gokv
 
-// TODO: Accept kv pair as a defined type struct
+import "github.com/simar7/gokv/types"
+
 type Store interface {
-	Set(k string, v interface{}) error
-	BatchSet(k []string, v interface{}) error
-	Get(k string, v interface{}) (found bool, err error)
-	Delete(k string) error
+	Set(input types.SetItemInput) error
+	BatchSet(input types.BatchSetItemInput) error
+	Get(input types.GetItemInput) (found bool, err error)
+	Delete(input types.DeleteItemInput) error
 	Close() error
 }

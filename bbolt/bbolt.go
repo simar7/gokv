@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/simar7/gokv/types"
+
 	"github.com/simar7/gokv/encoding"
 	"github.com/simar7/gokv/util"
 	bolt "go.etcd.io/bbolt"
@@ -71,19 +73,19 @@ func NewStore(options Options) (Store, error) {
 	return result, nil
 }
 
-func (s Store) Set(k string, v interface{}) error {
-	if err := util.CheckKeyAndValue(k, v); err != nil {
+func (s Store) Set(input types.SetItemInput) error {
+	if err := util.CheckKeyAndValue(input.Key, input.Value); err != nil {
 		return err
 	}
 
-	data, err := s.codec.Marshal(v)
+	data, err := s.codec.Marshal(input.Value)
 	if err != nil {
 		return err
 	}
 
 	err = s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
-		return b.Put([]byte(k), data)
+		return b.Put([]byte(input.Key), data)
 	})
 	if err != nil {
 		return err
@@ -94,21 +96,21 @@ func (s Store) Set(k string, v interface{}) error {
 // boltdb batch operations work on single kv pair
 // but across multiple go routines. As a result, in this case
 // we cannot accept multiple kv pairs.
-func (s Store) BatchSet(k []string, v interface{}) error {
-	if len(k) > 1 {
+func (s Store) BatchSet(input types.BatchSetItemInput) error {
+	if len(input.Keys) > 1 {
 		return ErrMultipleKVNotSupported
 	}
 
-	switch reflect.TypeOf(v).Kind() {
+	switch reflect.TypeOf(input.Values).Kind() {
 	case reflect.Slice:
-		values := reflect.ValueOf(v)
+		values := reflect.ValueOf(input.Values)
 		if values.Len() > 1 {
 			return ErrMultipleKVNotSupported
 		}
 	}
 
-	value := reflect.ValueOf(v).Index(0).Interface()
-	if err := util.CheckKeyAndValue(k[0], value); err != nil {
+	value := reflect.ValueOf(input.Values).Index(0).Interface()
+	if err := util.CheckKeyAndValue(input.Keys[0], value); err != nil {
 		return err
 	}
 
@@ -119,7 +121,7 @@ func (s Store) BatchSet(k []string, v interface{}) error {
 
 	err = s.db.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
-		return b.Put([]byte(k[0]), data)
+		return b.Put([]byte(input.Keys[0]), data)
 	})
 	if err != nil {
 		return err
@@ -127,15 +129,15 @@ func (s Store) BatchSet(k []string, v interface{}) error {
 	return nil
 }
 
-func (s Store) Get(k string, v interface{}) (found bool, err error) {
-	if err := util.CheckKeyAndValue(k, v); err != nil {
+func (s Store) Get(input types.GetItemInput) (found bool, err error) {
+	if err := util.CheckKeyAndValue(input.Key, input.Value); err != nil {
 		return false, err
 	}
 
 	var data []byte
 	err = s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
-		txData := b.Get([]byte(k))
+		txData := b.Get([]byte(input.Key))
 		if txData != nil {
 			data = append([]byte{}, txData...)
 		}
@@ -149,17 +151,17 @@ func (s Store) Get(k string, v interface{}) (found bool, err error) {
 		return false, nil
 	}
 
-	return true, s.codec.Unmarshal(data, v)
+	return true, s.codec.Unmarshal(data, input.Value)
 }
 
-func (s Store) Delete(k string) error {
-	if err := util.CheckKey(k); err != nil {
+func (s Store) Delete(input types.DeleteItemInput) error {
+	if err := util.CheckKey(input.Key); err != nil {
 		return err
 	}
 
 	return s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
-		return b.Delete([]byte(k))
+		return b.Delete([]byte(input.Key))
 	})
 }
 

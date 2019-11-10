@@ -3,6 +3,8 @@ package dynamodb
 import (
 	"errors"
 
+	"github.com/simar7/gokv/types"
+
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -92,19 +94,19 @@ func NewStore(options Options) (Store, error) {
 	return result, nil
 }
 
-func (s Store) Set(k string, v interface{}) error {
-	if err := util.CheckKeyAndValue(k, v); err != nil {
+func (s Store) Set(input types.SetItemInput) error {
+	if err := util.CheckKeyAndValue(input.Key, input.Value); err != nil {
 		return err
 	}
 
-	data, err := s.codec.Marshal(v)
+	data, err := s.codec.Marshal(input.Value)
 	if err != nil {
 		return err
 	}
 
 	item := make(map[string]*awsdynamodb.AttributeValue)
 	item[keyAttrName] = &awsdynamodb.AttributeValue{
-		S: &k,
+		S: &input.Key,
 	}
 	item[valAttrName] = &awsdynamodb.AttributeValue{
 		B: data,
@@ -124,14 +126,14 @@ func (s Store) BatchSet(k []string, v interface{}) error {
 	panic("implement me")
 }
 
-func (s Store) Get(k string, v interface{}) (found bool, err error) {
-	if err := util.CheckKeyAndValue(k, v); err != nil {
+func (s Store) Get(input types.GetItemInput) (found bool, err error) {
+	if err := util.CheckKeyAndValue(input.Key, input.Value); err != nil {
 		return false, err
 	}
 
 	key := make(map[string]*awsdynamodb.AttributeValue)
 	key[keyAttrName] = &awsdynamodb.AttributeValue{
-		S: &k,
+		S: &input.Key,
 	}
 	getItemInput := awsdynamodb.GetItemInput{
 		TableName: aws.String(s.tableName),
@@ -149,17 +151,17 @@ func (s Store) Get(k string, v interface{}) (found bool, err error) {
 	}
 	data := attributeVal.B
 
-	return true, s.codec.Unmarshal(data, v)
+	return true, s.codec.Unmarshal(data, input.Value)
 }
 
-func (s Store) Delete(k string) error {
-	if err := util.CheckKey(k); err != nil {
+func (s Store) Delete(input types.DeleteItemInput) error {
+	if err := util.CheckKey(input.Key); err != nil {
 		return err
 	}
 
 	key := make(map[string]*awsdynamodb.AttributeValue)
 	key[keyAttrName] = &awsdynamodb.AttributeValue{
-		S: &k,
+		S: &input.Key,
 	}
 
 	deleteItemInput := awsdynamodb.DeleteItemInput{

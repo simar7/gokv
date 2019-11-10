@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/simar7/gokv/types"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +31,7 @@ func TestStore_Set(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set
-	assert.NoError(t, s.Set("foo", "bar"))
+	assert.NoError(t, s.Set(types.SetItemInput{Key: "foo", Value: "bar"}))
 
 	// close
 	assert.NoError(t, s.Close())
@@ -48,7 +50,10 @@ func TestStore_BatchSet(t *testing.T) {
 	for i := 0; i <= 5; i++ {
 		wg.Add(1)
 		go func(i int) {
-			assert.NoError(t, s.BatchSet([]string{fmt.Sprintf("foo%d", i)}, []string{"bar"}))
+			assert.NoError(t, s.BatchSet(types.BatchSetItemInput{
+				Keys:   []string{fmt.Sprintf("foo%d", i)},
+				Values: []string{"bar"},
+			}))
 			wg.Done()
 		}(i)
 	}
@@ -57,7 +62,10 @@ func TestStore_BatchSet(t *testing.T) {
 	// check for set values
 	for i := 0; i <= 5; i++ {
 		var actualOutput string
-		found, err := s.Get(fmt.Sprintf("foo%d", i), &actualOutput)
+		found, err := s.Get(types.GetItemInput{
+			Key:   fmt.Sprintf("foo%d", i),
+			Value: &actualOutput,
+		})
 		assert.NoError(t, err)
 		assert.True(t, found)
 		assert.Equal(t, "bar", actualOutput)
@@ -76,11 +84,17 @@ func TestStore_Get(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set
-	assert.NoError(t, s.Set("foo", "bar"))
+	assert.NoError(t, s.Set(types.SetItemInput{
+		Key:   "foo",
+		Value: "bar",
+	}))
 
 	// get
 	var actualOutput string
-	found, err := s.Get("foo", &actualOutput)
+	found, err := s.Get(types.GetItemInput{
+		Key:   "foo",
+		Value: &actualOutput,
+	})
 	assert.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, "bar", actualOutput)
@@ -98,10 +112,13 @@ func TestStore_Delete(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set
-	assert.NoError(t, s.Set("foo", "bar"))
+	assert.NoError(t, s.Set(types.SetItemInput{
+		Key:   "foo",
+		Value: "bar",
+	}))
 
 	// delete
-	assert.NoError(t, s.Delete("foo"))
+	assert.NoError(t, s.Delete(types.DeleteItemInput{Key: "foo"}))
 
 	// close
 	assert.NoError(t, s.Close())

@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/simar7/gokv/types"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +25,10 @@ func benchmarkSet(j int, b *testing.B) {
 		for i := 0; i <= j; i++ {
 			wg.Add(1)
 			go func(i int) {
-				assert.NoError(b, s.Set(fmt.Sprintf("foo%d", i), "bar"))
+				assert.NoError(b, s.Set(types.SetItemInput{
+					Key:   fmt.Sprintf("foo%d", i),
+					Value: "bar",
+				}))
 				wg.Done()
 			}(i)
 		}
@@ -46,7 +51,10 @@ func benchmarkBatchSet(j int, b *testing.B) {
 		for i := 0; i <= j; i++ {
 			wg.Add(1)
 			go func(i int) {
-				assert.NoError(b, s.BatchSet([]string{fmt.Sprintf("foo%d", i)}, "bar"))
+				assert.NoError(b, s.BatchSet(types.BatchSetItemInput{
+					Keys:   []string{fmt.Sprintf("foo%d", i)},
+					Values: "bar",
+				}))
 				wg.Done()
 			}(i)
 		}

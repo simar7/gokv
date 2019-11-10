@@ -3,6 +3,8 @@ package dynamodb
 import (
 	"testing"
 
+	"github.com/simar7/gokv/types"
+
 	"github.com/aws/aws-sdk-go/aws"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
@@ -56,7 +58,7 @@ func TestStore_Set(t *testing.T) {
 		return &dynamodb.PutItemOutput{}, nil
 	}}
 
-	assert.NoError(t, s.Set("foo", "bar"))
+	assert.NoError(t, s.Set(types.SetItemInput{Key: "foo", Value: "bar"}))
 	assert.NoError(t, s.Close())
 }
 
@@ -84,7 +86,7 @@ func TestStore_Get(t *testing.T) {
 	}
 
 	var actualValue string
-	found, err := s.Get("foo", &actualValue)
+	found, err := s.Get(types.GetItemInput{Key: "foo", Value: &actualValue})
 	assert.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, "bar", actualValue)
@@ -103,7 +105,7 @@ func TestStore_Delete(t *testing.T) {
 		return &dynamodb.DeleteItemOutput{}, nil
 	}}
 
-	assert.NoError(t, s.Delete("foo"))
+	assert.NoError(t, s.Delete(types.DeleteItemInput{Key: "foo"}))
 	assert.NoError(t, s.Close())
 
 }
