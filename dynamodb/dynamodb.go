@@ -2,6 +2,7 @@ package dynamodb
 
 import (
 	"errors"
+	"reflect"
 
 	"github.com/simar7/gokv/types"
 
@@ -122,8 +123,47 @@ func (s Store) Set(input types.SetItemInput) error {
 	return nil
 }
 
-func (s Store) BatchSet(k []string, v interface{}) error {
-	panic("implement me")
+func (s Store) BatchSet(input types.BatchSetItemInput) error {
+	var datas [][]byte
+	var writeRequests []*awsdynamodb.WriteRequest
+
+	for i := 0; i < len(input.Keys); i++ {
+		if err := util.CheckKeyAndValue(input.Keys[i], input.Values); err != nil {
+			return err
+		}
+
+		data, err := s.codec.Marshal(reflect.ValueOf(input.Values).Index(i).Interface())
+		if err != nil {
+			return err
+		}
+		datas = append(datas, data)
+
+		writeRequests = append(writeRequests, &awsdynamodb.WriteRequest{
+			PutRequest: &awsdynamodb.PutRequest{
+				Item: map[string]*awsdynamodb.AttributeValue{
+					keyAttrName: {
+						S: aws.String(input.Keys[i]),
+					},
+					valAttrName: {
+						B: datas[i],
+					},
+				},
+			},
+		})
+	}
+
+	batchItemInput := &awsdynamodb.BatchWriteItemInput{
+		RequestItems: map[string][]*awsdynamodb.WriteRequest{
+			s.tableName: writeRequests,
+		},
+	}
+
+	_, err := s.c.BatchWriteItem(batchItemInput)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s Store) Get(input types.GetItemInput) (found bool, err error) {

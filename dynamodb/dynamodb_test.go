@@ -16,9 +16,10 @@ import (
 
 type mockDynamoDB struct {
 	dynamodbiface.DynamoDBAPI
-	putItem    func(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
-	getItem    func(*dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error)
-	deleteItem func(*dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error)
+	putItem        func(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
+	getItem        func(*dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error)
+	deleteItem     func(*dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error)
+	batchWriteItem func(*dynamodb.BatchWriteItemInput) (*dynamodb.BatchWriteItemOutput, error)
 }
 
 func (md mockDynamoDB) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
@@ -43,6 +44,14 @@ func (md mockDynamoDB) DeleteItem(input *dynamodb.DeleteItemInput) (*dynamodb.De
 	}
 
 	return &dynamodb.DeleteItemOutput{}, nil
+}
+
+func (md mockDynamoDB) BatchWriteItem(input *dynamodb.BatchWriteItemInput) (*dynamodb.BatchWriteItemOutput, error) {
+	if md.batchWriteItem != nil {
+		return md.batchWriteItem(input)
+	}
+
+	return &dynamodb.BatchWriteItemOutput{}, nil
 }
 
 func TestStore_Set(t *testing.T) {
@@ -106,6 +115,53 @@ func TestStore_Delete(t *testing.T) {
 	}}
 
 	assert.NoError(t, s.Delete(types.DeleteItemInput{Key: "foo"}))
+	assert.NoError(t, s.Close())
+
+}
+
+func TestStore_BatchSet(t *testing.T) {
+	s, err := NewStore(Options{
+		Region:         "ca-test-1",
+		TableName:      "gokvtesttable",
+		CustomEndpoint: "https://foo.bar/test",
+	})
+	assert.NoError(t, err)
+	s.c = mockDynamoDB{
+		batchWriteItem: func(input *dynamodb.BatchWriteItemInput) (output *dynamodb.BatchWriteItemOutput, e error) {
+			assert.Equal(t, []*dynamodb.WriteRequest{
+				{
+					PutRequest: &dynamodb.PutRequest{
+						Item: map[string]*dynamodb.AttributeValue{
+							keyAttrName: {
+								S: aws.String("foo"),
+							},
+							valAttrName: {
+								B: []byte(`"bar"`),
+							},
+						},
+					},
+				},
+				{
+					PutRequest: &dynamodb.PutRequest{
+						Item: map[string]*dynamodb.AttributeValue{
+							keyAttrName: {
+								S: aws.String("faz"),
+							},
+							valAttrName: {
+								B: []byte(`"baz"`),
+							},
+						},
+					},
+				},
+			}, input.RequestItems[s.tableName])
+			return &dynamodb.BatchWriteItemOutput{}, nil
+		},
+	}
+
+	assert.NoError(t, s.BatchSet(types.BatchSetItemInput{
+		Keys:   []string{"foo", "faz"},
+		Values: []string{"bar", "baz"},
+	}))
 	assert.NoError(t, s.Close())
 
 }
