@@ -1,0 +1,6 @@
+Format: Benchmark{Function_Name}_{Goroutine_Count}
+
+BenchmarkStore_Set_10-4         	       1	24897833105 ns/op	 8908800 B/op	  138873 allocs/op
+BenchmarkStore_BatchSet_10-4    	       1	1677375096 ns/op	  389144 B/op	    5204 allocs/op
+BenchmarkStore_Set_25-4         	       1	82723457800 ns/op	31837528 B/op	  510635 allocs/op
+BenchmarkStore_BatchSet_25-4    	       1	2578581574 ns/op	 1163744 B/op	   17851 allocs/op
