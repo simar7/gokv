@@ -12,6 +12,8 @@ import (
 )
 
 func benchmarkSet(j int, b *testing.B) {
+	b.ReportAllocs()
+
 	s, f, err := setupStore()
 	defer func() {
 		_ = f.Close()
@@ -38,6 +40,8 @@ func benchmarkSet(j int, b *testing.B) {
 }
 
 func benchmarkBatchSet(j int, b *testing.B) {
+	b.ReportAllocs()
+
 	s, f, err := setupStore()
 	defer func() {
 		_ = f.Close()
@@ -64,41 +68,33 @@ func benchmarkBatchSet(j int, b *testing.B) {
 }
 
 func BenchmarkStore_Set_10(b *testing.B) {
-	b.ReportAllocs()
 	benchmarkSet(10, b)
 }
 
 func BenchmarkStore_BatchSet_10(b *testing.B) {
-	b.ReportAllocs()
 	benchmarkBatchSet(10, b)
 }
 
 func BenchmarkStore_Set_100(b *testing.B) {
-	b.ReportAllocs()
 	benchmarkSet(100, b)
 }
 
 func BenchmarkStore_BatchSet_100(b *testing.B) {
-	b.ReportAllocs()
 	benchmarkBatchSet(100, b)
 }
 
 func BenchmarkStore_Set_1000(b *testing.B) {
-	b.ReportAllocs()
 	benchmarkSet(1000, b)
 }
 
 func BenchmarkStore_BatchSet_1000(b *testing.B) {
-	b.ReportAllocs()
 	benchmarkBatchSet(1000, b)
 }
 
 func BenchmarkStore_Set_10000(b *testing.B) {
-	b.ReportAllocs()
 	benchmarkSet(10000, b)
 }
 
 func BenchmarkStore_BatchSet_10000(b *testing.B) {
-	b.ReportAllocs()
 	benchmarkBatchSet(10000, b)
 }
