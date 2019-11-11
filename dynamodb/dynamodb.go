@@ -16,9 +16,9 @@ import (
 	"github.com/simar7/gokv/util"
 )
 
-const (
-	keyAttrName = "k"
-	valAttrName = "v"
+var (
+	KeyAttrName = "k"
+	ValAttrName = "v"
 )
 
 var (
@@ -106,10 +106,10 @@ func (s Store) Set(input types.SetItemInput) error {
 	}
 
 	item := make(map[string]*awsdynamodb.AttributeValue)
-	item[keyAttrName] = &awsdynamodb.AttributeValue{
+	item[KeyAttrName] = &awsdynamodb.AttributeValue{
 		S: &input.Key,
 	}
-	item[valAttrName] = &awsdynamodb.AttributeValue{
+	item[ValAttrName] = &awsdynamodb.AttributeValue{
 		B: data,
 	}
 	putItemInput := awsdynamodb.PutItemInput{
@@ -141,10 +141,10 @@ func (s Store) BatchSet(input types.BatchSetItemInput) error {
 		writeRequests = append(writeRequests, &awsdynamodb.WriteRequest{
 			PutRequest: &awsdynamodb.PutRequest{
 				Item: map[string]*awsdynamodb.AttributeValue{
-					keyAttrName: {
+					KeyAttrName: {
 						S: aws.String(input.Keys[i]),
 					},
-					valAttrName: {
+					ValAttrName: {
 						B: datas[i],
 					},
 				},
@@ -172,7 +172,7 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 	}
 
 	key := make(map[string]*awsdynamodb.AttributeValue)
-	key[keyAttrName] = &awsdynamodb.AttributeValue{
+	key[KeyAttrName] = &awsdynamodb.AttributeValue{
 		S: &input.Key,
 	}
 	getItemInput := awsdynamodb.GetItemInput{
@@ -185,7 +185,7 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 	} else if getItemOutput.Item == nil {
 		return false, nil
 	}
-	attributeVal := getItemOutput.Item[valAttrName]
+	attributeVal := getItemOutput.Item[ValAttrName]
 	if attributeVal == nil {
 		return false, nil
 	}
@@ -200,7 +200,7 @@ func (s Store) Delete(input types.DeleteItemInput) error {
 	}
 
 	key := make(map[string]*awsdynamodb.AttributeValue)
-	key[keyAttrName] = &awsdynamodb.AttributeValue{
+	key[KeyAttrName] = &awsdynamodb.AttributeValue{
 		S: &input.Key,
 	}
 

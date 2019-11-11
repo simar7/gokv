@@ -62,8 +62,8 @@ func TestStore_Set(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	s.c = mockDynamoDB{putItem: func(input *dynamodb.PutItemInput) (output *dynamodb.PutItemOutput, e error) {
-		assert.Equal(t, "foo", *input.Item[keyAttrName].S)
-		assert.Equal(t, []byte(`"bar"`), input.Item[valAttrName].B)
+		assert.Equal(t, "foo", *input.Item[KeyAttrName].S)
+		assert.Equal(t, []byte(`"bar"`), input.Item[ValAttrName].B)
 		return &dynamodb.PutItemOutput{}, nil
 	}}
 
@@ -80,13 +80,13 @@ func TestStore_Get(t *testing.T) {
 	assert.NoError(t, err)
 	s.c = mockDynamoDB{
 		getItem: func(input *dynamodb.GetItemInput) (output *dynamodb.GetItemOutput, e error) {
-			assert.Equal(t, "foo", *input.Key[keyAttrName].S)
+			assert.Equal(t, "foo", *input.Key[KeyAttrName].S)
 			return &dynamodb.GetItemOutput{
 				Item: map[string]*dynamodb.AttributeValue{
-					keyAttrName: {
+					KeyAttrName: {
 						S: aws.String("foo"),
 					},
-					valAttrName: {
+					ValAttrName: {
 						B: []byte(`"bar"`),
 					},
 				},
@@ -110,7 +110,7 @@ func TestStore_Delete(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	s.c = mockDynamoDB{deleteItem: func(input *dynamodb.DeleteItemInput) (output *dynamodb.DeleteItemOutput, e error) {
-		assert.Equal(t, "foo", *input.Key[keyAttrName].S)
+		assert.Equal(t, "foo", *input.Key[KeyAttrName].S)
 		return &dynamodb.DeleteItemOutput{}, nil
 	}}
 
@@ -132,10 +132,10 @@ func TestStore_BatchSet(t *testing.T) {
 				{
 					PutRequest: &dynamodb.PutRequest{
 						Item: map[string]*dynamodb.AttributeValue{
-							keyAttrName: {
+							KeyAttrName: {
 								S: aws.String("foo"),
 							},
-							valAttrName: {
+							ValAttrName: {
 								B: []byte(`"bar"`),
 							},
 						},
@@ -144,10 +144,10 @@ func TestStore_BatchSet(t *testing.T) {
 				{
 					PutRequest: &dynamodb.PutRequest{
 						Item: map[string]*dynamodb.AttributeValue{
-							keyAttrName: {
+							KeyAttrName: {
 								S: aws.String("faz"),
 							},
-							valAttrName: {
+							ValAttrName: {
 								B: []byte(`"baz"`),
 							},
 						},
