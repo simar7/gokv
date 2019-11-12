@@ -16,29 +16,35 @@ var (
 )
 
 type Options struct {
-	BucketName string
-	Path       string
-	Codec      encoding.Codec
+	RootBucketName string
+	Path           string
+	Codec          encoding.Codec
 }
 
 var DefaultOptions = Options{
-	BucketName: "default",
-	Path:       "bbolt.db",
-	Codec:      encoding.JSON,
+	RootBucketName: "gokvbbolt",
+	Path:           "bbolt.db",
+	Codec:          encoding.JSON,
+}
+
+type RootBucketConfig struct {
+	Name   string
+	Bucket *bolt.Bucket
 }
 
 type Store struct {
 	db         *bolt.DB
+	rbc        RootBucketConfig
 	bucketName string
 	codec      encoding.Codec
 }
 
-func NewStore(options Options) (Store, error) {
+func NewStore(options Options) (*Store, error) {
 	result := Store{}
 
 	// Set default values
-	if options.BucketName == "" {
-		options.BucketName = DefaultOptions.BucketName
+	if options.RootBucketName == "" {
+		options.RootBucketName = DefaultOptions.RootBucketName
 	}
 	if options.Path == "" {
 		options.Path = DefaultOptions.Path
@@ -50,19 +56,33 @@ func NewStore(options Options) (Store, error) {
 	// Open DB
 	db, err := bolt.Open(options.Path, 0600, nil)
 	if err != nil {
-		return result, err
+		return nil, err
 	}
 
 	result.db = db
-	result.bucketName = options.BucketName
-	result.codec = options.Codec
+	err = result.db.Update(func(tx *bolt.Tx) error {
+		if result.rbc.Bucket, err = tx.CreateBucketIfNotExists([]byte(options.RootBucketName)); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	return result, nil
+	result.rbc.Name = options.RootBucketName
+	result.codec = options.Codec
+	return &result, nil
 }
 
-func (s Store) createBucketIfNotExists(bucketName string) error {
+func (s *Store) createBucketIfNotExists(bucketName string) error {
 	err := s.db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(bucketName))
+		root, err := tx.CreateBucketIfNotExists([]byte(s.rbc.Name))
+		if err != nil {
+			return err
+		}
+
+		_, err = root.CreateBucketIfNotExists([]byte(bucketName))
 		if err != nil {
 			return err
 		}
@@ -90,7 +110,7 @@ func (s Store) Set(input types.SetItemInput) error {
 	}
 
 	err = s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(input.BucketName))
+		b := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName))
 		return b.Put([]byte(input.Key), data)
 	})
 	if err != nil {
@@ -133,7 +153,7 @@ func (s Store) BatchSet(input types.BatchSetItemInput) error {
 	}
 
 	err = s.db.Batch(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(input.BucketName))
+		b := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName))
 		return b.Put([]byte(input.Keys[0]), data)
 	})
 	if err != nil {
@@ -149,7 +169,7 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 
 	var data []byte
 	err = s.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(input.BucketName))
+		b := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName))
 		txData := b.Get([]byte(input.Key))
 		if txData != nil {
 			data = append([]byte{}, txData...)
@@ -173,7 +193,7 @@ func (s Store) Delete(input types.DeleteItemInput) error {
 	}
 
 	return s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(input.BucketName))
+		b := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName))
 		return b.Delete([]byte(input.Key))
 	})
 }

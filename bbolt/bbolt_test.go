@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupStore() (Store, *os.File, error) {
+func setupStore() (*Store, *os.File, error) {
 	f, err := ioutil.TempFile("", "Bolt_TestStore_Get-*")
 	if err != nil {
-		return Store{}, nil, err
+		return nil, nil, err
 	}
 
 	s, err := NewStore(Options{Path: f.Name()})
