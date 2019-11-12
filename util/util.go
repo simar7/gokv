@@ -7,6 +7,7 @@ var (
 	ErrEmptyValue = errors.New("passed value is empty")
 )
 
+// TODO: Add checking of bucket name
 // CheckKeyAndValue returns an error if k == "" or if v == nil
 func CheckKeyAndValue(k string, v interface{}) error {
 	if err := CheckKey(k); err != nil {
