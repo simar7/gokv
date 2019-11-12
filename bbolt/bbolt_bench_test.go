@@ -21,6 +21,7 @@ func benchmarkSet(j int, b *testing.B) {
 	}()
 	assert.NoError(b, err)
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// batch set
 		var wg sync.WaitGroup
@@ -28,14 +29,17 @@ func benchmarkSet(j int, b *testing.B) {
 			wg.Add(1)
 			go func(i int) {
 				assert.NoError(b, s.Set(types.SetItemInput{
-					Key:   fmt.Sprintf("foo%d", i),
-					Value: "bar",
+					Key:        fmt.Sprintf("foo%d", i),
+					Value:      "bar",
+					BucketName: "testing",
 				}))
 				wg.Done()
 			}(i)
 		}
 		wg.Wait()
 	}
+	b.StopTimer()
+
 	assert.NoError(b, s.Close())
 }
 
@@ -49,6 +53,7 @@ func benchmarkBatchSet(j int, b *testing.B) {
 	}()
 	assert.NoError(b, err)
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// batch set
 		var wg sync.WaitGroup
@@ -56,14 +61,17 @@ func benchmarkBatchSet(j int, b *testing.B) {
 			wg.Add(1)
 			go func(i int) {
 				assert.NoError(b, s.BatchSet(types.BatchSetItemInput{
-					Keys:   []string{fmt.Sprintf("foo%d", i)},
-					Values: "bar",
+					Keys:       []string{fmt.Sprintf("foo%d", i)},
+					Values:     "bar",
+					BucketName: "testing",
 				}))
 				wg.Done()
 			}(i)
 		}
 		wg.Wait()
 	}
+	b.StopTimer()
+
 	assert.NoError(b, s.Close())
 }
 

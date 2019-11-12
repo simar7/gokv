@@ -1,20 +1,24 @@
 package types
 
 type SetItemInput struct {
-	Key   string
-	Value interface{}
+	BucketName string
+	Key        string
+	Value      interface{}
 }
 
 type BatchSetItemInput struct {
-	Keys   []string
-	Values interface{}
+	BucketName string
+	Keys       []string
+	Values     interface{}
 }
 
 type GetItemInput struct {
-	Key   string
-	Value interface{}
+	BucketName string
+	Key        string
+	Value      interface{}
 }
 
 type DeleteItemInput struct {
-	Key string
+	BucketName string
+	Key        string
 }

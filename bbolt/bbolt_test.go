@@ -31,7 +31,12 @@ func TestStore_Set(t *testing.T) {
 	assert.NoError(t, err)
 
 	// set
-	assert.NoError(t, s.Set(types.SetItemInput{Key: "foo", Value: "bar"}))
+	assert.NoError(t, s.Set(types.SetItemInput{
+		Key:        "foo",
+		Value:      "bar",
+		BucketName: "setbucket",
+	},
+	))
 
 	// close
 	assert.NoError(t, s.Close())
@@ -51,8 +56,9 @@ func TestStore_BatchSet(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			assert.NoError(t, s.BatchSet(types.BatchSetItemInput{
-				Keys:   []string{fmt.Sprintf("foo%d", i)},
-				Values: []string{"bar"},
+				Keys:       []string{fmt.Sprintf("foo%d", i)},
+				Values:     []string{"bar"},
+				BucketName: "batchsetbucket",
 			}))
 			wg.Done()
 		}(i)
@@ -63,8 +69,9 @@ func TestStore_BatchSet(t *testing.T) {
 	for i := 0; i <= 5; i++ {
 		var actualOutput string
 		found, err := s.Get(types.GetItemInput{
-			Key:   fmt.Sprintf("foo%d", i),
-			Value: &actualOutput,
+			Key:        fmt.Sprintf("foo%d", i),
+			Value:      &actualOutput,
+			BucketName: "batchsetbucket",
 		})
 		assert.NoError(t, err)
 		assert.True(t, found)
@@ -85,15 +92,17 @@ func TestStore_Get(t *testing.T) {
 
 	// set
 	assert.NoError(t, s.Set(types.SetItemInput{
-		Key:   "foo",
-		Value: "bar",
+		Key:        "foo",
+		Value:      "bar",
+		BucketName: "getbucket",
 	}))
 
 	// get
 	var actualOutput string
 	found, err := s.Get(types.GetItemInput{
-		Key:   "foo",
-		Value: &actualOutput,
+		Key:        "foo",
+		Value:      &actualOutput,
+		BucketName: "getbucket",
 	})
 	assert.NoError(t, err)
 	assert.True(t, found)
@@ -113,12 +122,13 @@ func TestStore_Delete(t *testing.T) {
 
 	// set
 	assert.NoError(t, s.Set(types.SetItemInput{
-		Key:   "foo",
-		Value: "bar",
+		Key:        "foo",
+		Value:      "bar",
+		BucketName: "deletebucket",
 	}))
 
 	// delete
-	assert.NoError(t, s.Delete(types.DeleteItemInput{Key: "foo"}))
+	assert.NoError(t, s.Delete(types.DeleteItemInput{Key: "foo", BucketName: "deletebucket"}))
 
 	// close
 	assert.NoError(t, s.Close())

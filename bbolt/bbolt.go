@@ -53,19 +53,6 @@ func NewStore(options Options) (Store, error) {
 		return result, err
 	}
 
-	// Create a bucket if it doesn't exist yet.
-	// In bbolt key/value pairs are stored to and read from buckets.
-	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(options.BucketName))
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return result, err
-	}
-
 	result.db = db
 	result.bucketName = options.BucketName
 	result.codec = options.Codec
@@ -73,8 +60,27 @@ func NewStore(options Options) (Store, error) {
 	return result, nil
 }
 
+func (s Store) createBucketIfNotExists(bucketName string) error {
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte(bucketName))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s Store) Set(input types.SetItemInput) error {
 	if err := util.CheckKeyAndValue(input.Key, input.Value); err != nil {
+		return err
+	}
+
+	err := s.createBucketIfNotExists(input.BucketName)
+	if err != nil {
 		return err
 	}
 
@@ -84,7 +90,7 @@ func (s Store) Set(input types.SetItemInput) error {
 	}
 
 	err = s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.bucketName))
+		b := tx.Bucket([]byte(input.BucketName))
 		return b.Put([]byte(input.Key), data)
 	})
 	if err != nil {
@@ -114,13 +120,20 @@ func (s Store) BatchSet(input types.BatchSetItemInput) error {
 		return err
 	}
 
+	// TODO: This check currently slows down the perf of BatchSet() by ~80%
+	// If we can guarantee bucket existance before writing, we can avoid this.
+	err := s.createBucketIfNotExists(input.BucketName)
+	if err != nil {
+		return err
+	}
+
 	data, err := s.codec.Marshal(value)
 	if err != nil {
 		return err
 	}
 
 	err = s.db.Batch(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.bucketName))
+		b := tx.Bucket([]byte(input.BucketName))
 		return b.Put([]byte(input.Keys[0]), data)
 	})
 	if err != nil {
@@ -136,7 +149,7 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 
 	var data []byte
 	err = s.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.bucketName))
+		b := tx.Bucket([]byte(input.BucketName))
 		txData := b.Get([]byte(input.Key))
 		if txData != nil {
 			data = append([]byte{}, txData...)
@@ -160,7 +173,7 @@ func (s Store) Delete(input types.DeleteItemInput) error {
 	}
 
 	return s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.bucketName))
+		b := tx.Bucket([]byte(input.BucketName))
 		return b.Delete([]byte(input.Key))
 	})
 }
