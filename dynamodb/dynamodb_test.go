@@ -62,12 +62,17 @@ func TestStore_Set(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	s.c = mockDynamoDB{putItem: func(input *dynamodb.PutItemInput) (output *dynamodb.PutItemOutput, e error) {
+		assert.Equal(t, "testing", *input.TableName)
 		assert.Equal(t, "foo", *input.Item[KeyAttrName].S)
 		assert.Equal(t, []byte(`"bar"`), input.Item[ValAttrName].B)
 		return &dynamodb.PutItemOutput{}, nil
 	}}
 
-	assert.NoError(t, s.Set(types.SetItemInput{Key: "foo", Value: "bar"}))
+	assert.NoError(t, s.Set(types.SetItemInput{
+		Key:        "foo",
+		Value:      "bar",
+		BucketName: "testing",
+	}))
 	assert.NoError(t, s.Close())
 }
 
@@ -80,6 +85,7 @@ func TestStore_Get(t *testing.T) {
 	assert.NoError(t, err)
 	s.c = mockDynamoDB{
 		getItem: func(input *dynamodb.GetItemInput) (output *dynamodb.GetItemOutput, e error) {
+			assert.Equal(t, "testing", *input.TableName)
 			assert.Equal(t, "foo", *input.Key[KeyAttrName].S)
 			return &dynamodb.GetItemOutput{
 				Item: map[string]*dynamodb.AttributeValue{
@@ -95,7 +101,11 @@ func TestStore_Get(t *testing.T) {
 	}
 
 	var actualValue string
-	found, err := s.Get(types.GetItemInput{Key: "foo", Value: &actualValue})
+	found, err := s.Get(types.GetItemInput{
+		Key:        "foo",
+		Value:      &actualValue,
+		BucketName: "testing",
+	})
 	assert.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, "bar", actualValue)
@@ -110,11 +120,12 @@ func TestStore_Delete(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	s.c = mockDynamoDB{deleteItem: func(input *dynamodb.DeleteItemInput) (output *dynamodb.DeleteItemOutput, e error) {
+		assert.Equal(t, "testing", *input.TableName)
 		assert.Equal(t, "foo", *input.Key[KeyAttrName].S)
 		return &dynamodb.DeleteItemOutput{}, nil
 	}}
 
-	assert.NoError(t, s.Delete(types.DeleteItemInput{Key: "foo"}))
+	assert.NoError(t, s.Delete(types.DeleteItemInput{Key: "foo", BucketName: "testing"}))
 	assert.NoError(t, s.Close())
 
 }
@@ -128,6 +139,14 @@ func TestStore_BatchSet(t *testing.T) {
 	assert.NoError(t, err)
 	s.c = mockDynamoDB{
 		batchWriteItem: func(input *dynamodb.BatchWriteItemInput) (output *dynamodb.BatchWriteItemOutput, e error) {
+			assert.Equal(t, 1, len(input.RequestItems))
+
+			var inputKey string
+			for k := range input.RequestItems { // since there's only one key
+				inputKey = k
+			}
+			assert.Equal(t, "testing", inputKey)
+
 			assert.Equal(t, []*dynamodb.WriteRequest{
 				{
 					PutRequest: &dynamodb.PutRequest{
@@ -153,14 +172,15 @@ func TestStore_BatchSet(t *testing.T) {
 						},
 					},
 				},
-			}, input.RequestItems[s.tableName])
+			}, input.RequestItems[inputKey])
 			return &dynamodb.BatchWriteItemOutput{}, nil
 		},
 	}
 
 	assert.NoError(t, s.BatchSet(types.BatchSetItemInput{
-		Keys:   []string{"foo", "faz"},
-		Values: []string{"bar", "baz"},
+		Keys:       []string{"foo", "faz"},
+		Values:     []string{"bar", "baz"},
+		BucketName: "testing",
 	}))
 	assert.NoError(t, s.Close())
 

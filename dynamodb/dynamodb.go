@@ -113,7 +113,7 @@ func (s Store) Set(input types.SetItemInput) error {
 		B: data,
 	}
 	putItemInput := awsdynamodb.PutItemInput{
-		TableName: aws.String(s.tableName),
+		TableName: aws.String(input.BucketName),
 		Item:      item,
 	}
 	_, err = s.c.PutItem(&putItemInput)
@@ -154,7 +154,7 @@ func (s Store) BatchSet(input types.BatchSetItemInput) error {
 
 	batchItemInput := &awsdynamodb.BatchWriteItemInput{
 		RequestItems: map[string][]*awsdynamodb.WriteRequest{
-			s.tableName: writeRequests,
+			input.BucketName: writeRequests,
 		},
 	}
 
@@ -176,7 +176,7 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 		S: &input.Key,
 	}
 	getItemInput := awsdynamodb.GetItemInput{
-		TableName: aws.String(s.tableName),
+		TableName: aws.String(input.BucketName),
 		Key:       key,
 	}
 	getItemOutput, err := s.c.GetItem(&getItemInput)
@@ -205,7 +205,7 @@ func (s Store) Delete(input types.DeleteItemInput) error {
 	}
 
 	deleteItemInput := awsdynamodb.DeleteItemInput{
-		TableName: aws.String(s.tableName),
+		TableName: aws.String(input.BucketName),
 		Key:       key,
 	}
 	_, err := s.c.DeleteItem(&deleteItemInput)

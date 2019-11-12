@@ -88,12 +88,12 @@ func createTable(tableName string, readCapacityUnits, writeCapacityUnits int64, 
 	return nil
 }
 
-func createStore(b *testing.B, codec encoding.Codec) (*dynamodb.Store, error) {
+func createStore(b *testing.B, tableName string, codec encoding.Codec) (*dynamodb.Store, error) {
 	options := dynamodb.Options{
 		Region:             endpoints.UsWest2RegionID,
 		CustomEndpoint:     customEndpoint,
 		Codec:              codec,
-		TableName:          "gokvtesting",
+		TableName:          tableName,
 		AWSSecretAccessKey: "fookey",
 		AWSAccessKeyID:     "barsecretkey",
 		ReadCapacityUnits:  5,
@@ -145,11 +145,15 @@ func createStore(b *testing.B, codec encoding.Codec) (*dynamodb.Store, error) {
 
 func benchmarkSet(j int, b *testing.B) {
 	b.ReportAllocs()
-	s, err := createStore(b, encoding.JSON)
+	uniqRunID := rand.New(rand.NewSource(time.Now().UnixNano())).Float64()*10 + 10
+	tableName := fmt.Sprintf("benchtesting%f", uniqRunID)
+
+	s, err := createStore(b, tableName, encoding.JSON)
 	if err != nil {
 		b.Fatalf(err.Error())
 	}
-	uniqRunID := rand.New(rand.NewSource(time.Now().UnixNano())).Float64()*10 + 10
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		totalEntries := dynamoDBBatchLimit + (dynamoDBBatchLimit * (j / dynamoDBBatchLimit))
 		var wg sync.WaitGroup
@@ -157,30 +161,42 @@ func benchmarkSet(j int, b *testing.B) {
 			wg.Add(1)
 			go func(i int) {
 				for k := 0; k < totalEntries; k++ {
-					assert.NoError(b, s.Set(types.SetItemInput{Key: fmt.Sprintf("foo%d%d%f", i, k, uniqRunID), Value: Value{v: fmt.Sprintf("bar%d", i)}}))
+					assert.NoError(b, s.Set(types.SetItemInput{
+						Key:        fmt.Sprintf("foo%d%d%f", i, k, uniqRunID),
+						Value:      Value{v: fmt.Sprintf("bar%d", i)},
+						BucketName: tableName,
+					},
+					))
 				}
 				wg.Done()
 			}(i)
 		}
 		wg.Wait()
 	}
+	b.StopTimer()
 
 	// cleanup
 	for i := 0; i < j; i++ {
 		for k := 0; k < dynamoDBBatchLimit; k++ {
-			assert.NoError(b, s.Delete(types.DeleteItemInput{Key: fmt.Sprintf("foo%d%d%f", i, k, uniqRunID)}))
+			assert.NoError(b, s.Delete(types.DeleteItemInput{
+				Key:        fmt.Sprintf("foo%d%d%f", i, k, uniqRunID),
+				BucketName: tableName,
+			}))
 		}
 	}
 }
 
 func benchmarkBatchSet(j int, b *testing.B) {
 	b.ReportAllocs()
-	s, err := createStore(b, encoding.JSON)
+	uniqRunID := rand.New(rand.NewSource(time.Now().UnixNano())).Float64()*10 + 10
+	tableName := fmt.Sprintf("benchtesting%f", uniqRunID)
+
+	s, err := createStore(b, tableName, encoding.JSON)
 	if err != nil {
 		b.Fatalf(err.Error())
 	}
 	numGoroutinesSplits := int(j / dynamoDBBatchLimit) // 25 is the limit of dynamodb batch request input
-	uniqRunID := rand.New(rand.NewSource(time.Now().UnixNano())).Float64()*10 + 10
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var wg sync.WaitGroup
 		for g := 0; g <= numGoroutinesSplits; g++ {
@@ -193,16 +209,24 @@ func benchmarkBatchSet(j int, b *testing.B) {
 					batchKeys = append(batchKeys, fmt.Sprintf("foo%d%d%f", i, g, uniqRunID))
 					batchValues = append(batchValues, Value{v: fmt.Sprintf("bar%d%d", i, g)})
 				}
-				assert.NoError(b, s.BatchSet(types.BatchSetItemInput{Keys: batchKeys, Values: batchValues}))
+				assert.NoError(b, s.BatchSet(types.BatchSetItemInput{
+					Keys:       batchKeys,
+					Values:     batchValues,
+					BucketName: fmt.Sprintf("benchtesting%f", uniqRunID),
+				}))
 			}(g)
 		}
 		wg.Wait()
 	}
+	b.StopTimer()
 
 	// cleanup
 	for g := 0; g <= numGoroutinesSplits; g++ {
 		for i := 0; i < j; i++ {
-			assert.NoError(b, s.Delete(types.DeleteItemInput{Key: fmt.Sprintf("foo%d%d%f", i, g, uniqRunID)}))
+			assert.NoError(b, s.Delete(types.DeleteItemInput{
+				Key:        fmt.Sprintf("foo%d%d%f", i, g, uniqRunID),
+				BucketName: fmt.Sprintf("benchtesting%f", uniqRunID),
+			}))
 		}
 	}
 
@@ -231,12 +255,3 @@ func BenchmarkStore_Set_100(b *testing.B) {
 func BenchmarkStore_BatchSet_100(b *testing.B) {
 	benchmarkBatchSet(100, b)
 }
-
-//
-//func BenchmarkStore_Set_1000(b *testing.B) {
-//	benchmarkSet(1000, b)
-//}
-//
-//func BenchmarkStore_BatchSet_1000(b *testing.B) {
-//	benchmarkBatchSet(1000, b)
-//}
