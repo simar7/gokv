@@ -17,6 +17,7 @@ var (
 )
 
 type Options struct {
+	DB             *bolt.DB
 	RootBucketName string
 	Path           string
 	Codec          encoding.Codec
@@ -54,14 +55,18 @@ func NewStore(options Options) (*Store, error) {
 		options.Codec = DefaultOptions.Codec
 	}
 
-	// Open DB
-	db, err := bolt.Open(options.Path, 0600, nil)
-	if err != nil {
-		return nil, err
+	if options.DB == nil {
+		// Open DB
+		var err error
+		options.DB, err = bolt.Open(options.Path, 0600, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	result.db = db
-	err = result.db.Update(func(tx *bolt.Tx) error {
+	result.db = options.DB
+	err := result.db.Update(func(tx *bolt.Tx) error {
+		var err error
 		if result.rbc.Bucket, err = tx.CreateBucketIfNotExists([]byte(options.RootBucketName)); err != nil {
 			return err
 		}

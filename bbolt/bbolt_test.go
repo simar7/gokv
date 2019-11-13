@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/simar7/gokv/util"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/simar7/gokv/types"
 
@@ -22,6 +23,45 @@ func setupStore() (*Store, *os.File, error) {
 
 	s, err := NewStore(Options{Path: f.Name()})
 	return s, f, err
+}
+
+func TestNewStore(t *testing.T) {
+	testCases := []struct {
+		name                string
+		existingDB          bool
+		inputRootBucketName string
+	}{
+		{
+			name: "happy path with no existing DB",
+		},
+		{
+			name:       "happy with with existing DB",
+			existingDB: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		d, _ := ioutil.TempDir("", "TestNewStoreDir-*")
+		f, _ := ioutil.TempFile(d, "TestNewStore-*.db")
+		defer func() {
+			_ = os.RemoveAll(d)
+		}()
+
+		inputOptions := Options{
+			Path: f.Name(),
+		}
+
+		if tc.existingDB {
+			tempDB, err := bolt.Open(f.Name(), 0600, nil)
+			assert.NoError(t, err)
+			inputOptions.DB = tempDB
+		}
+
+		s, err := NewStore(inputOptions)
+		assert.NoError(t, err)
+		assert.NotNil(t, s)
+	}
+
 }
 
 func TestStore_Set(t *testing.T) {
