@@ -25,23 +25,38 @@ func setupStore() (*Store, *os.File, error) {
 }
 
 func TestStore_Set(t *testing.T) {
-	s, f, err := setupStore()
-	defer func() {
-		_ = f.Close()
-		_ = os.RemoveAll(f.Name())
-	}()
-	assert.NoError(t, err)
+	testCases := []struct {
+		name          string
+		inputBucket   string
+		expectedError error
+	}{
+		{
+			name:        "happy path",
+			inputBucket: "setbucket",
+		},
+		// TODO: Add sad paths
+	}
 
-	// set
-	assert.NoError(t, s.Set(types.SetItemInput{
-		Key:        "foo",
-		Value:      "bar",
-		BucketName: "setbucket",
-	},
-	))
+	for _, tc := range testCases {
+		s, f, err := setupStore()
+		defer func() {
+			_ = f.Close()
+			_ = os.RemoveAll(f.Name())
+		}()
+		assert.NoError(t, err)
 
-	// close
-	assert.NoError(t, s.Close())
+		// set
+		assert.Equal(t, tc.expectedError, s.Set(types.SetItemInput{
+			Key:        "foo",
+			Value:      "bar",
+			BucketName: tc.inputBucket,
+		},
+		), tc.name)
+
+		// close
+		assert.NoError(t, s.Close())
+	}
+
 }
 
 func TestStore_BatchSet(t *testing.T) {

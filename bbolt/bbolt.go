@@ -111,7 +111,10 @@ func (s Store) Set(input types.SetItemInput) error {
 	}
 
 	err = s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName))
+		var b *bolt.Bucket
+		if b = tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName)); b == nil { // Untested
+			return ErrBucketNotFound
+		}
 		return b.Put([]byte(input.Key), data)
 	})
 	if err != nil {
