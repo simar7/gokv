@@ -36,6 +36,7 @@ type RootBucketConfig struct {
 
 type Store struct {
 	db         *bolt.DB
+	dbPath     string
 	rbc        RootBucketConfig
 	bucketName string
 	codec      encoding.Codec
@@ -77,8 +78,18 @@ func NewStore(options Options) (*Store, error) {
 	}
 
 	result.rbc.Name = options.RootBucketName
+	result.dbPath = options.Path
 	result.codec = options.Codec
 	return &result, nil
+}
+
+func (s *Store) GetStoreOptions() Options {
+	return Options{
+		DB:             s.db,
+		RootBucketName: s.rbc.Name,
+		Path:           s.dbPath,
+		Codec:          s.codec,
+	}
 }
 
 func (s *Store) createBucketIfNotExists(bucketName string) error {

@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/simar7/gokv/encoding"
+
 	"github.com/simar7/gokv/util"
 	bolt "go.etcd.io/bbolt"
 
@@ -58,10 +60,25 @@ func TestNewStore(t *testing.T) {
 		}
 
 		s, err := NewStore(inputOptions)
-		assert.NoError(t, err)
-		assert.NotNil(t, s)
+		assert.NoError(t, err, tc.name)
+		//assert.NotNil(t, s)
+		assert.Equal(t, f.Name(), s.dbPath, tc.name)
 	}
 
+}
+
+func TestStore_GetStoreOptions(t *testing.T) {
+	s, f, err := setupStore()
+	defer func() {
+		_ = f.Close()
+		_ = os.RemoveAll(f.Name())
+	}()
+	assert.NoError(t, err)
+
+	so := s.GetStoreOptions()
+	assert.NotNil(t, so.DB)
+	assert.Equal(t, f.Name(), so.Path)
+	assert.Equal(t, encoding.JSON, s.codec)
 }
 
 func TestStore_Set(t *testing.T) {
