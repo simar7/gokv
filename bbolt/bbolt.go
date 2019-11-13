@@ -157,7 +157,10 @@ func (s Store) BatchSet(input types.BatchSetItemInput) error {
 	}
 
 	err = s.db.Batch(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName))
+		var b *bolt.Bucket
+		if b = tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName)); b == nil { // Untested
+			return ErrBucketNotFound
+		}
 		return b.Put([]byte(input.Keys[0]), data)
 	})
 	if err != nil {
