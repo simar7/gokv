@@ -13,6 +13,7 @@ import (
 
 var (
 	ErrMultipleKVNotSupported = errors.New("multiple kv pair not supported")
+	ErrBucketNotFound         = errors.New("bucket not found")
 )
 
 type Options struct {
@@ -169,7 +170,10 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 
 	var data []byte
 	err = s.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName))
+		var b *bolt.Bucket
+		if b = tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName)); b == nil {
+			return ErrBucketNotFound
+		}
 		txData := b.Get([]byte(input.Key))
 		if txData != nil {
 			data = append([]byte{}, txData...)

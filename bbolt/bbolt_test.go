@@ -7,13 +7,15 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/simar7/gokv/util"
+
 	"github.com/simar7/gokv/types"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func setupStore() (*Store, *os.File, error) {
-	f, err := ioutil.TempFile("", "Bolt_TestStore_Get-*")
+	f, err := ioutil.TempFile(".", "Bolt_TestStore_Get-*")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -83,33 +85,74 @@ func TestStore_BatchSet(t *testing.T) {
 }
 
 func TestStore_Get(t *testing.T) {
-	s, f, err := setupStore()
-	defer func() {
-		_ = f.Close()
-		_ = os.RemoveAll(f.Name())
-	}()
-	assert.NoError(t, err)
+	testCases := []struct {
+		name           string
+		inputBucket    string
+		inputKey       string
+		expectedValue  string
+		valueFound     bool
+		expcectedError error
+	}{
+		{
+			name:          "happy path",
+			inputBucket:   "getbucket",
+			inputKey:      "foo",
+			expectedValue: "bar",
+			valueFound:    true,
+		},
+		{
+			name:          "happy path: key not found",
+			inputBucket:   "getbucket",
+			inputKey:      "badkey",
+			expectedValue: "",
+		},
+		{
+			name:           "sad path: bucket not found",
+			inputBucket:    "badbucket",
+			inputKey:       "foo",
+			expcectedError: ErrBucketNotFound,
+		},
+		{
+			name:           "sad path: passed key is empty",
+			inputKey:       "",
+			expcectedError: util.ErrEmptyKey,
+		},
+	}
 
-	// set
-	assert.NoError(t, s.Set(types.SetItemInput{
-		Key:        "foo",
-		Value:      "bar",
-		BucketName: "getbucket",
-	}))
+	for _, tc := range testCases {
+		s, f, err := setupStore()
+		defer func() {
+			_ = f.Close()
+			_ = os.RemoveAll(f.Name())
+		}()
+		assert.NoError(t, err)
 
-	// get
-	var actualOutput string
-	found, err := s.Get(types.GetItemInput{
-		Key:        "foo",
-		Value:      &actualOutput,
-		BucketName: "getbucket",
-	})
-	assert.NoError(t, err)
-	assert.True(t, found)
-	assert.Equal(t, "bar", actualOutput)
+		// set
+		assert.NoError(t, s.Set(types.SetItemInput{
+			Key:        "foo",
+			Value:      "bar",
+			BucketName: "getbucket",
+		}))
 
-	// close
-	assert.NoError(t, s.Close())
+		// get
+		var actualOutput string
+		found, err := s.Get(types.GetItemInput{
+			Key:        tc.inputKey,
+			Value:      &actualOutput,
+			BucketName: tc.inputBucket,
+		})
+
+		switch {
+		case tc.expcectedError != nil:
+			assert.Equal(t, tc.expcectedError, err, tc.name)
+			assert.Empty(t, actualOutput, tc.name)
+		default:
+			assert.NoError(t, tc.expcectedError, tc.name)
+			assert.Equal(t, tc.expectedValue, actualOutput, tc.name)
+		}
+		assert.Equal(t, tc.valueFound, found, tc.name)
+		assert.NoError(t, s.Close())
+	}
 }
 
 func TestStore_Delete(t *testing.T) {
