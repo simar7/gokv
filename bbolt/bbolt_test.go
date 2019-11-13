@@ -171,23 +171,57 @@ func TestStore_Get(t *testing.T) {
 }
 
 func TestStore_Delete(t *testing.T) {
-	s, f, err := setupStore()
-	defer func() {
-		_ = f.Close()
-		_ = os.RemoveAll(f.Name())
-	}()
-	assert.NoError(t, err)
+	testCases := []struct {
+		name          string
+		inputBucket   string
+		inputKey      string
+		expectedError error
+	}{
+		{
+			name:        "happy path",
+			inputBucket: "deletebucket",
+			inputKey:    "foo",
+		},
+		{
+			name:          "sad path: input bucket not found",
+			inputBucket:   "badinputbucket",
+			inputKey:      "foo",
+			expectedError: ErrBucketNotFound,
+		},
+		{
+			name:        "sad path: input key not found",
+			inputBucket: "deletebucket",
+			inputKey:    "badkey",
+		},
+		{
+			name:          "sad path: input key empty",
+			inputBucket:   "deletebucket",
+			inputKey:      "",
+			expectedError: util.ErrEmptyKey,
+		},
+	}
 
-	// set
-	assert.NoError(t, s.Set(types.SetItemInput{
-		Key:        "foo",
-		Value:      "bar",
-		BucketName: "deletebucket",
-	}))
+	for _, tc := range testCases {
+		s, f, err := setupStore()
+		defer func() {
+			_ = f.Close()
+			_ = os.RemoveAll(f.Name())
+		}()
+		assert.NoError(t, err)
 
-	// delete
-	assert.NoError(t, s.Delete(types.DeleteItemInput{Key: "foo", BucketName: "deletebucket"}))
+		// set
+		assert.NoError(t, s.Set(types.SetItemInput{
+			Key:        "foo",
+			Value:      "bar",
+			BucketName: "deletebucket",
+		}))
 
-	// close
-	assert.NoError(t, s.Close())
+		// delete
+		assert.Equal(t, tc.expectedError, s.Delete(types.DeleteItemInput{
+			Key: tc.inputKey, BucketName: tc.inputBucket}), tc.name)
+
+		// close
+		assert.NoError(t, s.Close())
+	}
+
 }

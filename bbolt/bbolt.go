@@ -203,7 +203,10 @@ func (s Store) Delete(input types.DeleteItemInput) error {
 	}
 
 	return s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName))
+		var b *bolt.Bucket
+		if b = tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName)); b == nil {
+			return ErrBucketNotFound
+		}
 		return b.Delete([]byte(input.Key))
 	})
 }
