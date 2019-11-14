@@ -99,10 +99,10 @@ func BenchmarkStore_BatchSet_1000(b *testing.B) {
 	benchmarkBatchSet(1000, b)
 }
 
-func BenchmarkStore_Set_10000(b *testing.B) {
-	benchmarkSet(10000, b)
-}
-
-func BenchmarkStore_BatchSet_10000(b *testing.B) {
-	benchmarkBatchSet(10000, b)
-}
+//func BenchmarkStore_Set_10000(b *testing.B) {
+//	benchmarkSet(10000, b)
+//}
+//
+//func BenchmarkStore_BatchSet_10000(b *testing.B) {
+//	benchmarkBatchSet(10000, b)
+//}
