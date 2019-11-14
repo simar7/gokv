@@ -117,43 +117,75 @@ func TestStore_Set(t *testing.T) {
 }
 
 func TestStore_BatchSet(t *testing.T) {
-	s, f, err := setupStore()
-	defer func() {
-		_ = f.Close()
-		_ = os.RemoveAll(f.Name())
-	}()
-	assert.NoError(t, err)
-
-	// batch set
-	var wg sync.WaitGroup
-	for i := 0; i <= 5; i++ {
-		wg.Add(1)
-		go func(i int) {
-			assert.NoError(t, s.BatchSet(types.BatchSetItemInput{
-				Keys:       []string{fmt.Sprintf("foo%d", i)},
-				Values:     []string{"bar"},
-				BucketName: "batchsetbucket",
-			}))
-			wg.Done()
-		}(i)
-	}
-	wg.Wait()
-
-	// check for set values
-	for i := 0; i <= 5; i++ {
-		var actualOutput string
-		found, err := s.Get(types.GetItemInput{
-			Key:        fmt.Sprintf("foo%d", i),
-			Value:      &actualOutput,
-			BucketName: "batchsetbucket",
-		})
+	t.Run("happy path", func(t *testing.T) {
+		s, f, err := setupStore()
+		defer func() {
+			_ = f.Close()
+			_ = os.RemoveAll(f.Name())
+		}()
 		assert.NoError(t, err)
-		assert.True(t, found)
-		assert.Equal(t, "bar", actualOutput)
-	}
 
-	// close
-	assert.NoError(t, s.Close())
+		// batch set
+		var wg sync.WaitGroup
+		for i := 0; i <= 5; i++ {
+			wg.Add(1)
+			go func(i int) {
+				assert.NoError(t, s.BatchSet(types.BatchSetItemInput{
+					Keys:       []string{fmt.Sprintf("foo%d", i)},
+					Values:     "bar",
+					BucketName: "batchsetbucket",
+				}))
+				wg.Done()
+			}(i)
+		}
+		wg.Wait()
+
+		// check for set values
+		for i := 0; i <= 5; i++ {
+			var actualOutput string
+			found, err := s.Get(types.GetItemInput{
+				Key:        fmt.Sprintf("foo%d", i),
+				Value:      &actualOutput,
+				BucketName: "batchsetbucket",
+			})
+			assert.NoError(t, err)
+			assert.True(t, found)
+			assert.Equal(t, "bar", actualOutput)
+		}
+
+		// close
+		assert.NoError(t, s.Close())
+	})
+
+	t.Run("sad paths", func(t *testing.T) {
+		testCases := []struct {
+			name          string
+			inputKeys     []string
+			inputValues   interface{}
+			expectedError error
+		}{
+			{
+				name:          "multiple keys",
+				inputKeys:     []string{"key1", "key2"},
+				expectedError: ErrMultipleKVNotSupported,
+			},
+			// TODO: Add more sad paths
+		}
+
+		for _, tc := range testCases {
+			s, f, err := setupStore()
+			defer func() {
+				_ = f.Close()
+				_ = os.RemoveAll(f.Name())
+			}()
+			assert.NoError(t, err)
+			assert.Equal(t, ErrMultipleKVNotSupported, s.BatchSet(types.BatchSetItemInput{
+				BucketName: "batchbucket",
+				Keys:       tc.inputKeys,
+				Values:     tc.inputValues,
+			}), tc.name)
+		}
+	})
 }
 
 func TestStore_Get(t *testing.T) {

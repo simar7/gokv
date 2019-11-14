@@ -2,7 +2,6 @@ package bbolt
 
 import (
 	"errors"
-	"reflect"
 
 	"github.com/simar7/gokv/types"
 
@@ -14,6 +13,7 @@ import (
 var (
 	ErrMultipleKVNotSupported = errors.New("multiple kv pair not supported")
 	ErrBucketNotFound         = errors.New("bucket not found")
+	ErrBucketCreationFailed   = errors.New("bucket creation failed")
 )
 
 type Options struct {
@@ -141,43 +141,28 @@ func (s Store) Set(input types.SetItemInput) error {
 
 // boltdb batch operations work on single kv pair
 // but across multiple go routines. As a result, in this case
-// we cannot accept multiple kv pairs.
+// we cannot accept multiple keys.
 func (s Store) BatchSet(input types.BatchSetItemInput) error {
 	if len(input.Keys) > 1 {
 		return ErrMultipleKVNotSupported
 	}
 
-	switch reflect.TypeOf(input.Values).Kind() {
-	case reflect.Slice:
-		values := reflect.ValueOf(input.Values)
-		if values.Len() > 1 {
-			return ErrMultipleKVNotSupported
-		}
-	}
-
-	value := reflect.ValueOf(input.Values).Index(0).Interface()
-	if err := util.CheckKeyAndValue(input.Keys[0], value); err != nil {
-		return err
-	}
-
-	// TODO: This check currently slows down the perf of BatchSet() by ~80%
-	// If we can guarantee bucket existance before writing, we can avoid this.
-	err := s.createBucketIfNotExists(input.BucketName)
-	if err != nil {
-		return err
-	}
-
-	data, err := s.codec.Marshal(value)
+	data, err := s.codec.Marshal(input.Values)
 	if err != nil {
 		return err
 	}
 
 	err = s.db.Batch(func(tx *bolt.Tx) error {
-		var b *bolt.Bucket
-		if b = tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName)); b == nil { // Untested
+		var b, b2 *bolt.Bucket
+		if b = tx.Bucket([]byte(s.rbc.Name)); b == nil { // Untested
 			return ErrBucketNotFound
 		}
-		return b.Put([]byte(input.Keys[0]), data)
+
+		if b2, err = b.CreateBucketIfNotExists([]byte(input.BucketName)); err != nil { // Untested
+			return ErrBucketCreationFailed
+		}
+
+		return b2.Put([]byte(input.Keys[0]), data)
 	})
 	if err != nil {
 		return err
