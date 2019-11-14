@@ -314,3 +314,54 @@ func TestStore_Delete(t *testing.T) {
 	}
 
 }
+
+func TestStore_Scan(t *testing.T) {
+
+	t.Run("happy path", func(t *testing.T) {
+		s, f, err := setupStore()
+		defer func() {
+			_ = f.Close()
+			_ = os.RemoveAll(f.Name())
+		}()
+		assert.NoError(t, err)
+
+		assert.NoError(t, s.Set(types.SetItemInput{
+			Key:        "foo1",
+			Value:      "bar1",
+			BucketName: "scanbucket",
+		}))
+
+		assert.NoError(t, s.Set(types.SetItemInput{
+			Key:        "foo2",
+			Value:      "bar2",
+			BucketName: "scanbucket",
+		}))
+
+		scanOut, err := s.Scan(types.ScanInput{BucketName: "scanbucket"})
+		assert.NoError(t, err)
+
+		assert.Equal(t, types.ScanOutput{
+			Keys:   []string{"foo1", "foo2"},
+			Values: [][]byte{{0x22, 0x62, 0x61, 0x72, 0x31, 0x22}, {0x22, 0x62, 0x61, 0x72, 0x32, 0x22}},
+		}, scanOut)
+	})
+
+	t.Run("sad path: bucket not found", func(t *testing.T) {
+		s, f, err := setupStore()
+		defer func() {
+			_ = f.Close()
+			_ = os.RemoveAll(f.Name())
+		}()
+		assert.NoError(t, err)
+
+		scanOut, err := s.Scan(types.ScanInput{BucketName: "badbucket"})
+		assert.Equal(t, ErrBucketNotFound, err)
+		assert.Empty(t, scanOut)
+	})
+
+	t.Run("sad path: bucket name empty", func(t *testing.T) {
+		scanOut, err := Store{}.Scan(types.ScanInput{})
+		assert.Equal(t, util.ErrEmptyBucketName, err)
+		assert.Empty(t, scanOut)
+	})
+}

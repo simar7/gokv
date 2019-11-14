@@ -23,6 +23,7 @@ var (
 
 var (
 	ErrMissingTableName = errors.New("table name is required")
+	ErrNotImplemented   = errors.New("function not implemented")
 )
 
 type Options struct {
@@ -214,4 +215,8 @@ func (s Store) Delete(input types.DeleteItemInput) error {
 
 func (s Store) Close() error {
 	return nil
+}
+
+func (s Store) Scan(input types.ScanInput) (types.ScanOutput, error) {
+	return types.ScanOutput{}, ErrNotImplemented
 }

@@ -116,7 +116,7 @@ func (s Store) Set(input types.SetItemInput) error {
 		return err
 	}
 
-	err := s.createBucketIfNotExists(input.BucketName)
+	err := s.createBucketIfNotExists(input.BucketName) // TODO: Can we move this inside s.db.Update()?
 	if err != nil {
 		return err
 	}
@@ -210,6 +210,38 @@ func (s Store) Delete(input types.DeleteItemInput) error {
 		}
 		return b.Delete([]byte(input.Key))
 	})
+}
+
+func (s Store) Scan(input types.ScanInput) (types.ScanOutput, error) {
+	if err := util.CheckBucketName(input.BucketName); err != nil {
+		return types.ScanOutput{}, err
+	}
+
+	var keys []string
+	var values [][]byte
+
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		var b *bolt.Bucket
+		if b = tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName)); b == nil {
+			return ErrBucketNotFound
+		}
+
+		if err := b.ForEach(func(k, v []byte) error {
+			keys = append(keys, string(k))
+			values = append(values, v)
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return types.ScanOutput{}, err
+	}
+
+	return types.ScanOutput{
+		Keys:   keys,
+		Values: values,
+	}, nil
 }
 
 func (s Store) Close() error {
