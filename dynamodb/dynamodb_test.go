@@ -1,7 +1,10 @@
 package dynamodb
 
 import (
+	"errors"
 	"testing"
+
+	"github.com/simar7/gokv/util"
 
 	"github.com/simar7/gokv/types"
 
@@ -20,6 +23,7 @@ type mockDynamoDB struct {
 	getItem        func(*dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error)
 	deleteItem     func(*dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error)
 	batchWriteItem func(*dynamodb.BatchWriteItemInput) (*dynamodb.BatchWriteItemOutput, error)
+	scan           func(*dynamodb.ScanInput) (*dynamodb.ScanOutput, error)
 }
 
 func (md mockDynamoDB) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
@@ -52,6 +56,14 @@ func (md mockDynamoDB) BatchWriteItem(input *dynamodb.BatchWriteItemInput) (*dyn
 	}
 
 	return &dynamodb.BatchWriteItemOutput{}, nil
+}
+
+func (md mockDynamoDB) Scan(input *dynamodb.ScanInput) (*dynamodb.ScanOutput, error) {
+	if md.scan != nil {
+		return md.scan(input)
+	}
+
+	return &dynamodb.ScanOutput{}, nil
 }
 
 func TestStore_Set(t *testing.T) {
@@ -184,4 +196,70 @@ func TestStore_BatchSet(t *testing.T) {
 	}))
 	assert.NoError(t, s.Close())
 
+}
+
+func TestStore_Scan(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		s, err := NewStore(Options{
+			Region:         "ca-test-1",
+			TableName:      "gokvtesttable",
+			CustomEndpoint: "https://foo.bar/test",
+		})
+		assert.NoError(t, err)
+		s.c = mockDynamoDB{
+			scan: func(input *dynamodb.ScanInput) (output *dynamodb.ScanOutput, e error) {
+				return &dynamodb.ScanOutput{
+					Items: []map[string]*dynamodb.AttributeValue{
+						{
+							KeyAttrName: &dynamodb.AttributeValue{
+								SS: []*string{aws.String("key1")},
+							},
+							ValAttrName: &dynamodb.AttributeValue{
+								BS: [][]byte{[]byte("val1")},
+							},
+						},
+						{
+							KeyAttrName: &dynamodb.AttributeValue{
+								SS: []*string{aws.String("key2")},
+							},
+							ValAttrName: &dynamodb.AttributeValue{
+								BS: [][]byte{[]byte("val2")},
+							},
+						},
+					},
+				}, nil
+			},
+		}
+
+		output, err := s.Scan(types.ScanInput{BucketName: "scanbucket"})
+		assert.NoError(t, err)
+		assert.Equal(t, types.ScanOutput{
+			Keys:   []string{"key1", "key2"},
+			Values: [][]byte{{0x76, 0x61, 0x6c, 0x31}, {0x76, 0x61, 0x6c, 0x32}},
+		}, output)
+	})
+
+	t.Run("sad path: missing bucket name", func(t *testing.T) {
+		so, err := Store{}.Scan(types.ScanInput{})
+		assert.Equal(t, util.ErrEmptyBucketName, err)
+		assert.Empty(t, so)
+	})
+
+	t.Run("sad path: dynamodb scan fails", func(t *testing.T) {
+		s, err := NewStore(Options{
+			Region:         "ca-test-1",
+			TableName:      "gokvtesttable",
+			CustomEndpoint: "https://foo.bar/test",
+		})
+		assert.NoError(t, err)
+
+		s.c = mockDynamoDB{
+			scan: func(input *dynamodb.ScanInput) (output *dynamodb.ScanOutput, e error) {
+				return nil, errors.New("dynamodb scan failed")
+			}}
+
+		so, err := s.Scan(types.ScanInput{BucketName: "testbucket"})
+		assert.Equal(t, "dynamodb scan failed", err.Error())
+		assert.Empty(t, so)
+	})
 }

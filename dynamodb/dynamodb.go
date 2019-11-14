@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+
 	"github.com/simar7/gokv/types"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
@@ -23,7 +25,7 @@ var (
 
 var (
 	ErrMissingTableName = errors.New("table name is required")
-	ErrNotImplemented   = errors.New("function not implemented")
+	//ErrNotImplemented   = errors.New("function not implemented")
 )
 
 type Options struct {
@@ -218,5 +220,28 @@ func (s Store) Close() error {
 }
 
 func (s Store) Scan(input types.ScanInput) (types.ScanOutput, error) {
-	return types.ScanOutput{}, ErrNotImplemented
+	if err := util.CheckBucketName(input.BucketName); err != nil {
+		return types.ScanOutput{}, err
+	}
+
+	awsScanInput := &awsdynamodb.ScanInput{
+		TableName: aws.String(input.BucketName),
+	}
+	awsScanOutput, err := s.c.Scan(awsScanInput)
+	if err != nil {
+		return types.ScanOutput{}, err
+	}
+
+	var items []types.ScanOutput
+	if err = dynamodbattribute.UnmarshalListOfMaps(awsScanOutput.Items, &items); err != nil {
+		return types.ScanOutput{}, err
+	}
+
+	var scanOuput types.ScanOutput
+	for _, item := range items {
+		scanOuput.Keys = append(scanOuput.Keys, item.Keys...)
+		scanOuput.Values = append(scanOuput.Values, item.Values...)
+	}
+
+	return scanOuput, nil
 }

@@ -28,6 +28,6 @@ type ScanInput struct {
 }
 
 type ScanOutput struct {
-	Keys   []string
-	Values [][]byte
+	Keys   []string `dynamodbav:"k"`
+	Values [][]byte `dynamodbav:"v"`
 }
