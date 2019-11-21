@@ -17,14 +17,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupStore() (*Store, *os.File, error) {
+func setupStoreWithCodec(codec encoding.Codec) (*Store, *os.File, error) {
 	f, err := ioutil.TempFile(".", "Bolt_TestStore_Get-*")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	s, err := NewStore(Options{Path: f.Name()})
+	s, err := NewStore(Options{Path: f.Name(), Codec: codec})
 	return s, f, err
+}
+
+func setupStore() (*Store, *os.File, error) {
+	return setupStoreWithCodec(encoding.JSON)
 }
 
 func TestNewStore(t *testing.T) {

@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/simar7/gokv/encoding"
+
 	"github.com/simar7/gokv/types"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +16,7 @@ import (
 func benchmarkSet(j int, b *testing.B) {
 	b.ReportAllocs()
 
-	s, f, err := setupStore()
+	s, f, err := setupStoreWithCodec(encoding.JSON)
 	defer func() {
 		_ = f.Close()
 		_ = os.RemoveAll(f.Name())
@@ -46,7 +48,7 @@ func benchmarkSet(j int, b *testing.B) {
 func benchmarkBatchSet(j int, b *testing.B) {
 	b.ReportAllocs()
 
-	s, f, err := setupStore()
+	s, f, err := setupStoreWithCodec(encoding.JSON)
 	defer func() {
 		_ = f.Close()
 		_ = os.RemoveAll(f.Name())

@@ -1,13 +1,23 @@
 Format: Benchmark{Function_Name}_{Goroutine_Count}
 
-BenchmarkStore_Set_10-8           	       7	 148262680 ns/op	   90536 B/op	     561 allocs/op
-BenchmarkStore_BatchSet_10-8      	      43	  25739238 ns/op	   14903 B/op	     174 allocs/op
+Codec: JSON
+-----------
+BenchmarkStore_Set_10-8          	       4	 287203197 ns/op	  166494 B/op	    1218 allocs/op
+BenchmarkStore_BatchSet_10-8     	      48	  24649885 ns/op	   17382 B/op	     236 allocs/op
 
-BenchmarkStore_Set_100-8          	       1	1389692456 ns/op	 1800696 B/op	    5729 allocs/op
-BenchmarkStore_BatchSet_100-8     	      43	  26573247 ns/op	   69442 B/op	    1182 allocs/op
+BenchmarkStore_Set_100-8         	       1	2686920561 ns/op	 2456736 B/op	   11318 allocs/op
+BenchmarkStore_BatchSet_100-8    	      48	  24819310 ns/op	   84989 B/op	    1597 allocs/op
 
-BenchmarkStore_Set_1000-8         	       1	14204090885 ns/op	29077600 B/op	   61877 allocs/op
-BenchmarkStore_BatchSet_1000-8    	      39	  27656939 ns/op	  685556 B/op	   12515 allocs/op
+BenchmarkStore_Set_1000-8        	       1	26768086250 ns/op	36138808 B/op	  120545 allocs/op
+BenchmarkStore_BatchSet_1000-8   	      42	  28252055 ns/op	  841488 B/op	   16593 allocs/op
 
-BenchmarkStore_Set_10000-8        	       1	135506772987 ns/op	336269280 B/op	  629670 allocs/op
-BenchmarkStore_BatchSet_10000-8   	       6	 168122801 ns/op	 8537401 B/op	  136949 allocs/op
+Codec: Gob
+----------
+BenchmarkStore_Set_10-8          	       4	 285566068 ns/op	  173706 B/op	    1323 allocs/op
+BenchmarkStore_BatchSet_10-8     	      46	  24549045 ns/op	   26445 B/op	     345 allocs/op
+
+BenchmarkStore_Set_100-8         	       1	2639456621 ns/op	 2545608 B/op	   12341 allocs/op
+BenchmarkStore_BatchSet_100-8    	      46	  25044494 ns/op	  166920 B/op	    2609 allocs/op
+
+BenchmarkStore_Set_1000-8        	       1	26472035638 ns/op	35322664 B/op	  130541 allocs/op
+BenchmarkStore_BatchSet_1000-8   	      39	  28649827 ns/op	 1664744 B/op	   26710 allocs/op
