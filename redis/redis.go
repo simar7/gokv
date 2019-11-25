@@ -139,7 +139,23 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 }
 
 func (s Store) Delete(input types.DeleteItemInput) error {
-	panic("implement me")
+	if err := util.CheckKey(input.Key); err != nil {
+		return err
+	}
+
+	c := s.p.Get()
+	defer c.Close()
+
+	keysDeleted, err := c.Do("DEL", input.Key)
+	if err != nil {
+		return err
+	}
+
+	if keysDeleted.(int64) <= 0 {
+		return ErrKeyNotFound
+	}
+
+	return nil
 }
 
 func (s Store) Close() error {

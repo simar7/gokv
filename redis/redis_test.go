@@ -144,3 +144,40 @@ func TestStore_Set(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, testStruct{Foo: "foo", Bar: 42.0, Baz: 123}, actualValue)
 }
+
+func TestStore_Delete(t *testing.T) {
+	t.Run("happy path, key to delete exists in redis", func(t *testing.T) {
+		mr, err := miniredis.Run()
+		assert.NoError(t, err)
+		defer mr.Close()
+
+		b, _ := json.Marshal(testStruct{
+			Foo: "foo",
+			Bar: 42.0,
+			Baz: 123,
+		})
+		_ = mr.Set("foo", string(b))
+
+		s, err := NewStore(Options{
+			Address: mr.Addr(),
+		})
+		assert.NoError(t, err)
+		defer s.Close()
+
+		assert.NoError(t, s.Delete(types.DeleteItemInput{Key: "foo"}))
+	})
+
+	t.Run("sad path, key to delete does not exist", func(t *testing.T) {
+		mr, err := miniredis.Run()
+		assert.NoError(t, err)
+		defer mr.Close()
+
+		s, err := NewStore(Options{
+			Address: mr.Addr(),
+		})
+		assert.NoError(t, err)
+		defer s.Close()
+
+		assert.Equal(t, ErrKeyNotFound, s.Delete(types.DeleteItemInput{Key: "foo"}))
+	})
+}
