@@ -161,3 +161,7 @@ func (s Store) Delete(input types.DeleteItemInput) error {
 func (s Store) Close() error {
 	return s.p.Close()
 }
+
+func (s Store) Scan(input types.ScanInput) (types.ScanOutput, error) {
+	panic("implement me")
+}
