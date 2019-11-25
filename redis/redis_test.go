@@ -3,6 +3,7 @@ package redis
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/simar7/gokv/types"
@@ -180,4 +181,30 @@ func TestStore_Delete(t *testing.T) {
 
 		assert.Equal(t, ErrKeyNotFound, s.Delete(types.DeleteItemInput{Key: "foo"}))
 	})
+}
+
+func TestStore_BatchSet(t *testing.T) {
+	mr, err := miniredis.Run()
+	assert.NoError(t, err)
+	defer mr.Close()
+
+	s, err := NewStore(Options{
+		Address: mr.Addr(),
+	})
+	assert.NoError(t, err)
+	defer s.Close()
+
+	assert.NoError(t, s.BatchSet(types.BatchSetItemInput{
+		Keys:   []string{"key1", "key2", "key3"},
+		Values: []string{"val1", "val2", "val3"},
+	}))
+
+	// check if the keys were actually set
+	for i := 1; i <= 3; i++ {
+		var actualValue string
+		found, err := s.Get(types.GetItemInput{Key: fmt.Sprintf("key%d", i), Value: &actualValue})
+		assert.True(t, found)
+		assert.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf("val%d", i), actualValue)
+	}
 }
