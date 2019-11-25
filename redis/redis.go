@@ -77,7 +77,6 @@ func NewStore(options Options) (Store, error) {
 		},
 	}
 
-	// TODO: Add a ping check
 	if err := s.ping(); err != nil {
 		return Store{}, err
 	}
