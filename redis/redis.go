@@ -1,9 +1,10 @@
 package redis
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/simar7/gokv/encoding"
 
 	"github.com/simar7/gokv/util"
 
@@ -22,16 +23,19 @@ type Options struct {
 	MaxActiveConnections int
 	Network              string
 	Address              string
+	Codec                encoding.Codec
 }
 
 var DefaultOptions = Options{
 	MaxIdleConnections:   80,
 	MaxActiveConnections: 10000,
 	Network:              "tcp",
+	Codec:                encoding.JSON,
 }
 
 type Store struct {
-	p *redis.Pool
+	p     *redis.Pool
+	codec encoding.Codec
 }
 
 func (s Store) ping() error {
@@ -63,6 +67,10 @@ func NewStore(options Options) (Store, error) {
 		options.Network = DefaultOptions.Network
 	}
 
+	if options.Codec == nil {
+		options.Codec = DefaultOptions.Codec
+	}
+
 	s := Store{
 		p: &redis.Pool{
 			MaxIdle:   options.MaxIdleConnections,
@@ -75,6 +83,7 @@ func NewStore(options Options) (Store, error) {
 				return c, nil
 			},
 		},
+		codec: options.Codec,
 	}
 
 	if err := s.ping(); err != nil {
@@ -105,7 +114,7 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 		return false, ErrKeyNotFound
 	}
 
-	if err := json.Unmarshal([]byte(val), &input.Value); err != nil {
+	if err := s.codec.Unmarshal([]byte(val), &input.Value); err != nil {
 		return true, err
 	}
 
