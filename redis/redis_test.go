@@ -21,6 +21,7 @@ func TestNewStore(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		mr, err := miniredis.Run()
 		assert.NoError(t, err)
+		defer mr.Close()
 
 		s, err := NewStore(Options{
 			Address: mr.Addr(),
@@ -74,6 +75,7 @@ func TestStore_Get(t *testing.T) {
 	for _, tc := range testCases {
 		mr, err := miniredis.Run()
 		assert.NoError(t, err, tc.name)
+		defer mr.Close()
 
 		if tc.inStore {
 			if tc.badMarshal {
