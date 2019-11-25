@@ -1,8 +1,11 @@
 package redis
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/simar7/gokv/util"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/simar7/gokv/types"
@@ -11,7 +14,7 @@ import (
 var (
 	ErrInvalidAddress  = errors.New("invalid redis address specified")
 	ErrRedisInitFailed = errors.New("redis initialization failed")
-	ErrRedisPingFailed = errors.New("redis ping failed")
+	ErrKeyNotFound     = errors.New("key not found")
 )
 
 type Options struct {
@@ -91,7 +94,23 @@ func (s Store) BatchSet(input types.BatchSetItemInput) error {
 }
 
 func (s Store) Get(input types.GetItemInput) (found bool, err error) {
-	panic("implement me")
+	if err := util.CheckKeyAndValue(input.Key, input.Value); err != nil {
+		return false, err
+	}
+
+	c := s.p.Get()
+	defer c.Close()
+
+	val, err := redis.String(c.Do("GET", input.Key))
+	if err != nil {
+		return false, ErrKeyNotFound
+	}
+
+	if err := json.Unmarshal([]byte(val), &input.Value); err != nil {
+		return true, err
+	}
+
+	return true, nil
 }
 
 func (s Store) Delete(input types.DeleteItemInput) error {
