@@ -3,6 +3,7 @@ package redis
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/simar7/gokv/encoding"
 
@@ -115,7 +116,29 @@ func (s Store) Set(input types.SetItemInput) error {
 }
 
 func (s Store) BatchSet(input types.BatchSetItemInput) error {
-	panic("implement me")
+	c := s.p.Get()
+
+	for i := 0; i < len(input.Keys); i++ {
+		if err := util.CheckKeyAndValue(input.Keys[i], input.Values); err != nil {
+			return err
+		}
+
+		val := reflect.ValueOf(input.Values).Index(i).Interface()
+		b, err := s.codec.Marshal(val)
+		if err != nil {
+			return err
+		}
+
+		if err := c.Send("SET", input.Keys[i], string(b)); err != nil {
+			return err
+		}
+	}
+
+	if err := c.Flush(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s Store) Get(input types.GetItemInput) (found bool, err error) {
@@ -126,7 +149,7 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 	c := s.p.Get()
 	defer c.Close()
 
-	val, err := redis.String(c.Do("GET", input.Key))
+	val, err := redis.Bytes(c.Do("GET", input.Key))
 	if err != nil {
 		return false, ErrKeyNotFound
 	}
