@@ -94,7 +94,24 @@ func NewStore(options Options) (Store, error) {
 }
 
 func (s Store) Set(input types.SetItemInput) error {
-	panic("implement me")
+	if err := util.CheckKeyAndValue(input.Key, input.Value); err != nil {
+		return err
+	}
+
+	c := s.p.Get()
+	defer c.Close()
+
+	b, err := s.codec.Marshal(input.Value)
+	if err != nil {
+		return err
+	}
+
+	_, err = redis.String(c.Do("SET", input.Key, string(b)))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s Store) BatchSet(input types.BatchSetItemInput) error {
