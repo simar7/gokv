@@ -11,7 +11,7 @@ import (
 var (
 	ErrInvalidAddress  = errors.New("invalid redis address specified")
 	ErrRedisInitFailed = errors.New("redis initialization failed")
-	//ErrRedisPingFailed = errors.New("redis ping failed")
+	ErrRedisPingFailed = errors.New("redis ping failed")
 )
 
 type Options struct {
@@ -31,18 +31,17 @@ type Store struct {
 	p *redis.Pool
 }
 
-// TODO: Add ping check
-//func (s Store) ping() error {
-//	c := s.p.Get()
-//	defer c.Close()
-//
-//	_, err := c.Do("PING")
-//	if err != nil {
-//		return fmt.Errorf("%s: %s", ErrRedisPingFailed, err)
-//	}
-//
-//	return nil
-//}
+func (s Store) ping() error {
+	c := s.p.Get()
+	defer c.Close()
+
+	_, err := c.Do("PING")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func NewStore(options Options) (Store, error) {
 	if options.Address == "" {
@@ -76,9 +75,9 @@ func NewStore(options Options) (Store, error) {
 	}
 
 	// TODO: Add a ping check
-	//if err := s.ping(); err != nil {
-	//	return s, err
-	//}
+	if err := s.ping(); err != nil {
+		return Store{}, err
+	}
 
 	return s, nil
 }
