@@ -26,6 +26,7 @@ func TestNewStore(t *testing.T) {
 		s, err := NewStore(Options{
 			Address: mr.Addr(),
 		})
+		assert.NoError(t, err)
 		defer s.Close()
 
 		assert.NoError(t, err)
