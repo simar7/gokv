@@ -26,6 +26,7 @@ func TestNewStore(t *testing.T) {
 		s, err := NewStore(Options{
 			Address: mr.Addr(),
 		})
+		defer s.Close()
 
 		assert.NoError(t, err)
 		assert.Equal(t, 10000, s.p.MaxActive)
@@ -36,6 +37,7 @@ func TestNewStore(t *testing.T) {
 		s, err := NewStore(Options{
 			Address: "path/to/nowhere:1234",
 		})
+
 		assert.Equal(t, "redis initialization failed: dial tcp: lookup path/to/nowhere: no such host", err.Error())
 		assert.Equal(t, Store{}, s)
 	})
@@ -94,6 +96,7 @@ func TestStore_Get(t *testing.T) {
 			Address: mr.Addr(),
 		})
 		assert.NoError(t, err, tc.name)
+		defer s.Close()
 
 		var actualValue testStruct
 		found, err := s.Get(types.GetItemInput{
