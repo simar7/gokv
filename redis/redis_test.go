@@ -116,3 +116,31 @@ func TestStore_Get(t *testing.T) {
 		assert.Equal(t, tc.expectedValue, actualValue, tc.name)
 	}
 }
+
+func TestStore_Set(t *testing.T) {
+	mr, err := miniredis.Run()
+	assert.NoError(t, err)
+	defer mr.Close()
+
+	s, err := NewStore(Options{
+		Address: mr.Addr(),
+	})
+	assert.NoError(t, err)
+	defer s.Close()
+
+	assert.NoError(t, s.Set(types.SetItemInput{
+		Key: "foo",
+		Value: testStruct{
+			Foo: "foo",
+			Bar: 42.0,
+			Baz: 123,
+		},
+	}))
+
+	// check if the key was actually set
+	var actualValue testStruct
+	found, err := s.Get(types.GetItemInput{Key: "foo", Value: &actualValue})
+	assert.True(t, found)
+	assert.NoError(t, err)
+	assert.Equal(t, testStruct{Foo: "foo", Bar: 42.0, Baz: 123}, actualValue)
+}
