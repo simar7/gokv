@@ -73,12 +73,25 @@ func TestStore_Set(t *testing.T) {
 		CustomEndpoint: "https://foo.bar/test",
 	})
 	assert.NoError(t, err)
-	s.c = mockDynamoDB{putItem: func(input *dynamodb.PutItemInput) (output *dynamodb.PutItemOutput, e error) {
-		assert.Equal(t, "testing", *input.TableName)
-		assert.Equal(t, "foo", *input.Item[KeyAttrName].S)
-		assert.Equal(t, []byte(`"bar"`), input.Item[ValAttrName].B)
-		return &dynamodb.PutItemOutput{}, nil
-	}}
+	s.c = mockDynamoDB{
+		putItem: func(input *dynamodb.PutItemInput) (output *dynamodb.PutItemOutput, e error) {
+			assert.Equal(t, "testing", *input.TableName)
+			assert.Equal(t, "foo", *input.Item[KeyAttrName].S)
+			assert.Equal(t, []byte(`"bar"`), input.Item[ValAttrName].B)
+			return &dynamodb.PutItemOutput{}, nil
+		},
+		getItem: func(input *dynamodb.GetItemInput) (output *dynamodb.GetItemOutput, e error) {
+			return &dynamodb.GetItemOutput{
+				Item: map[string]*dynamodb.AttributeValue{
+					KeyAttrName: {
+						S: aws.String("foo"),
+					},
+					ValAttrName: {
+						B: []byte(`"bar"`),
+					},
+				},
+			}, nil
+		}}
 
 	assert.NoError(t, s.Set(types.SetItemInput{
 		Key:        "foo",
@@ -86,6 +99,17 @@ func TestStore_Set(t *testing.T) {
 		BucketName: "testing",
 	}))
 	assert.NoError(t, s.Close())
+
+	// check if the value was set
+	var actualValue string
+	found, err := s.Get(types.GetItemInput{
+		BucketName: "testing",
+		Key:        "foo",
+		Value:      &actualValue,
+	})
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "bar", actualValue)
 }
 
 func TestStore_Get(t *testing.T) {
