@@ -40,7 +40,7 @@ func TestNewStore(t *testing.T) {
 			Address: "path/to/nowhere:1234",
 		})
 
-		assert.Equal(t, "redis initialization failed: dial tcp: lookup path/to/nowhere: no such host", err.Error())
+		assert.Contains(t, err.Error(), "redis initialization failed: dial tcp: lookup path/to/nowhere")
 		assert.Equal(t, Store{}, s)
 	})
 }
