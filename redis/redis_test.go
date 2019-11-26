@@ -208,3 +208,31 @@ func TestStore_BatchSet(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("val%d", i), actualValue)
 	}
 }
+
+func TestStore_Scan(t *testing.T) {
+	mr, err := miniredis.Run()
+	assert.NoError(t, err)
+	defer mr.Close()
+
+	s, err := NewStore(Options{
+		Address: mr.Addr(),
+	})
+	assert.NoError(t, err)
+	defer s.Close()
+
+	expectedKeys := []string{"key1", "key2", "key3"}
+	expectedValues := []string{"val1", "", "val3"}
+
+	assert.NoError(t, s.BatchSet(types.BatchSetItemInput{
+		Keys:   expectedKeys,
+		Values: expectedValues,
+	}))
+
+	out, err := s.Scan(types.ScanInput{})
+	assert.NoError(t, err)
+
+	assert.Equal(t, []string{"key1", "key2", "key3"}, out.Keys)
+	for i, v := range out.Values {
+		assert.Equal(t, fmt.Sprintf(`"%s"`, expectedValues[i]), string(v))
+	}
+}

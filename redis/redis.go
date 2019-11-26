@@ -154,7 +154,7 @@ func (s Store) Get(input types.GetItemInput) (found bool, err error) {
 		return false, ErrKeyNotFound
 	}
 
-	if err := s.codec.Unmarshal([]byte(val), &input.Value); err != nil {
+	if err := s.codec.Unmarshal(val, &input.Value); err != nil {
 		return true, err
 	}
 
@@ -186,5 +186,59 @@ func (s Store) Close() error {
 }
 
 func (s Store) Scan(input types.ScanInput) (types.ScanOutput, error) {
-	panic("implement me")
+	keys, err := s.getAllKeys()
+	if err != nil {
+		return types.ScanOutput{}, err
+	}
+
+	values, err := s.getAllValues(keys)
+	if err != nil {
+		return types.ScanOutput{}, err
+	}
+
+	return types.ScanOutput{
+		Keys:   keys,
+		Values: values,
+	}, nil
+}
+
+func (s Store) getAllValues(keys []string) ([][]byte, error) {
+	c := s.p.Get()
+
+	var values [][]byte
+	var args []interface{}
+
+	for _, k := range keys {
+		args = append(args, k)
+	}
+	vals, err := redis.Values(c.Do("MGET", args...))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, value := range vals {
+		values = append(values, value.([]byte))
+	}
+
+	return values, nil
+}
+
+func (s Store) getAllKeys() ([]string, error) {
+	c := s.p.Get()
+
+	iter := 0
+	var keys []string
+	for {
+		if arr, err := redis.Values(c.Do("SCAN", iter)); err != nil {
+			return nil, err
+		} else {
+			iter, _ = redis.Int(arr[0], nil)
+			keys, _ = redis.Strings(arr[1], nil)
+		}
+
+		if iter == 0 {
+			break
+		}
+	}
+	return keys, nil
 }
