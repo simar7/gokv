@@ -1,0 +1,23 @@
+Format: Benchmark{Function_Name}_{Goroutine_Count}
+
+Codec: JSON
+-----------
+BenchmarkStore_Set_10-4         	     500	   2553462 ns/op	    3740 B/op	     110 allocs/op
+BenchmarkStore_BatchSet_10-4    	     500	   2587243 ns/op	    5295 B/op	     197 allocs/op
+
+BenchmarkStore_Set_100-4        	      30	  39476347 ns/op	  256179 B/op	    1606 allocs/op
+BenchmarkStore_BatchSet_100-4   	      50	  44134158 ns/op	  260619 B/op	    2386 allocs/op
+
+BenchmarkStore_Set_120-4        	      20	  60924843 ns/op	  464026 B/op	    2341 allocs/op
+BenchmarkStore_BatchSet_120-4   	      20	  58316558 ns/op	  481560 B/op	    3309 allocs/op
+
+Codec: Gob
+----------
+BenchmarkStore_Set_10-4         	     300	   3629017 ns/op	   12770 B/op	     221 allocs/op
+BenchmarkStore_BatchSet_10-4    	     500	   2485100 ns/op	    5311 B/op	     197 allocs/op
+
+BenchmarkStore_Set_100-4        	      50	  42324953 ns/op	  327621 B/op	    2589 allocs/op
+BenchmarkStore_BatchSet_100-4   	      50	  43513730 ns/op	  260614 B/op	    2386 allocs/op
+
+BenchmarkStore_Set_120-4        	      20	  66190507 ns/op	  562011 B/op	    3551 allocs/op
+BenchmarkStore_BatchSet_120-4   	      20	  64726752 ns/op	  481698 B/op	    3311 allocs/op
