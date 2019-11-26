@@ -117,6 +117,7 @@ func (s Store) Set(input types.SetItemInput) error {
 
 func (s Store) BatchSet(input types.BatchSetItemInput) error {
 	c := s.p.Get()
+	defer c.Close()
 
 	for i := 0; i < len(input.Keys); i++ {
 		if err := util.CheckKeyAndValue(input.Keys[i], input.Values); err != nil {
