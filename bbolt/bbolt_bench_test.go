@@ -25,7 +25,6 @@ func benchmarkSet(j int, b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		// batch set
 		var wg sync.WaitGroup
 		for i := 0; i <= j; i++ {
 			wg.Add(1)
