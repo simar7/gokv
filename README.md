@@ -6,6 +6,7 @@ Currently in **Pre-Alpha** stage. Interfaces and contracts can change any time s
 ### Supported Datastores
 * [BoltDB](https://github.com/etcd-io/bbolt) 
 * [DynamoDB](https://aws.amazon.com/dynamodb/)
+* [Redis](https://redis.io)
 
 
 ****
