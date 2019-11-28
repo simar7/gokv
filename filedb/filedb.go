@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/simar7/gokv/types"
+
 	"github.com/simar7/gokv/encoding"
 	"github.com/simar7/gokv/util"
 )
@@ -28,17 +30,17 @@ type Store struct {
 // Set stores the given value for the given key.
 // Values are automatically marshalled to JSON or gob (depending on the configuration).
 // The key must not be "" and the value must not be nil.
-func (s Store) Set(k string, v interface{}) error {
-	if err := util.CheckKeyAndValue(k, v); err != nil {
+func (s Store) Set(input types.SetItemInput) error {
+	if err := util.CheckKeyAndValue(input.Key, input.Value); err != nil {
 		return err
 	}
 
-	data, err := s.codec.Marshal(v)
+	data, err := s.codec.Marshal(input.Value)
 	if err != nil {
 		return err
 	}
 
-	escapedKey := url.PathEscape(k)
+	escapedKey := url.PathEscape(input.Key)
 
 	// Prepare file lock.
 	lock := s.prepFileLock(escapedKey)
@@ -61,12 +63,12 @@ func (s Store) Set(k string, v interface{}) error {
 // that v points to with the values of the retrieved object's values.
 // If no value is found it returns (false, nil).
 // The key must not be "" and the pointer must not be nil.
-func (s Store) Get(k string, v interface{}) (found bool, err error) {
-	if err := util.CheckKeyAndValue(k, v); err != nil {
+func (s Store) Get(input types.GetItemInput) (found bool, err error) {
+	if err := util.CheckKeyAndValue(input.Key, input.Value); err != nil {
 		return false, err
 	}
 
-	escapedKey := url.PathEscape(k)
+	escapedKey := url.PathEscape(input.Key)
 
 	// Prepare file lock.
 	lock := s.prepFileLock(escapedKey)
@@ -89,18 +91,18 @@ func (s Store) Get(k string, v interface{}) (found bool, err error) {
 		return false, err
 	}
 
-	return true, s.codec.Unmarshal(data, v)
+	return true, s.codec.Unmarshal(data, input.Value)
 }
 
 // Delete deletes the stored value for the given key.
 // Deleting a non-existing key-value pair does NOT lead to an error.
 // The key must not be "".
-func (s Store) Delete(k string) error {
-	if err := util.CheckKey(k); err != nil {
+func (s Store) Delete(input types.DeleteItemInput) error {
+	if err := util.CheckKey(input.Key); err != nil {
 		return err
 	}
 
-	escapedKey := url.PathEscape(k)
+	escapedKey := url.PathEscape(input.Key)
 
 	// Prepare file lock.
 	lock := s.prepFileLock(escapedKey)
