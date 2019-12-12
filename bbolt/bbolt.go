@@ -213,6 +213,20 @@ func (s Store) Delete(input types.DeleteItemInput) error {
 	})
 }
 
+func (s Store) DeleteBucket(input types.DeleteBucketInput) error {
+	if err := util.CheckBucketName(input.BucketName); err != nil {
+		return err
+	}
+
+	return s.db.Update(func(tx *bolt.Tx) error {
+		var b *bolt.Bucket
+		if b = tx.Bucket([]byte(s.rbc.Name)); b == nil {
+			return ErrBucketNotFound
+		}
+		return b.DeleteBucket([]byte(input.BucketName))
+	})
+}
+
 func (s Store) Scan(input types.ScanInput) (types.ScanOutput, error) {
 	if err := util.CheckBucketName(input.BucketName); err != nil {
 		return types.ScanOutput{}, err

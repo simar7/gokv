@@ -382,3 +382,57 @@ func TestStore_Info(t *testing.T) {
 	assert.Equal(t, "gokvbbolt", actualInfo.Name)
 	assert.Equal(t, "32 KiB", h.IBytes(uint64(actualInfo.Size)))
 }
+
+func TestStore_DeleteBucket(t *testing.T) {
+	s, f, err := setupStore()
+	defer func() {
+		_ = f.Close()
+		_ = os.RemoveAll(f.Name())
+	}()
+	assert.NoError(t, err)
+
+	// set
+	assert.NoError(t, s.Set(types.SetItemInput{
+		Key:        "foo",
+		Value:      "bar",
+		BucketName: "subbucket",
+	}))
+
+	// delete bucket
+	assert.NoError(t, s.DeleteBucket(types.DeleteBucketInput{
+		BucketName: "subbucket"},
+	))
+
+	// verify
+	var actualValue string
+	found, err := s.Get(types.GetItemInput{
+		BucketName: "subbucket",
+		Key:        "foo",
+		Value:      &actualValue,
+	})
+	assert.Equal(t, ErrBucketNotFound, err)
+	assert.False(t, found)
+	assert.Empty(t, actualValue)
+
+	t.Run("sad path, empty input bucket name", func(t *testing.T) {
+		s, f, err := setupStore()
+		defer func() {
+			_ = f.Close()
+			_ = os.RemoveAll(f.Name())
+		}()
+		assert.NoError(t, err)
+		assert.Equal(t, util.ErrEmptyBucketName, s.DeleteBucket(types.DeleteBucketInput{}))
+	})
+
+	t.Run("sad path, bucket not found", func(t *testing.T) {
+		s, f, err := setupStore()
+		defer func() {
+			_ = f.Close()
+			_ = os.RemoveAll(f.Name())
+		}()
+		assert.NoError(t, err)
+		assert.Equal(t, ErrBucketNotFound, s.DeleteBucket(types.DeleteBucketInput{
+			BucketName: "badbucket",
+		}))
+	})
+}

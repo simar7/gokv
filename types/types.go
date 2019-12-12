@@ -23,6 +23,10 @@ type DeleteItemInput struct {
 	Key        string
 }
 
+type DeleteBucketInput struct {
+	BucketName string
+}
+
 type ScanInput struct {
 	BucketName string
 }
