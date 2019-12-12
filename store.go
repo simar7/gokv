@@ -9,4 +9,5 @@ type Store interface {
 	Delete(input types.DeleteItemInput) error
 	Close() error
 	Scan(input types.ScanInput) (types.ScanOutput, error)
+	Info() (types.StoreInfo, error)
 }

@@ -17,6 +17,7 @@ var (
 	ErrInvalidAddress  = errors.New("invalid redis address specified")
 	ErrRedisInitFailed = errors.New("redis initialization failed")
 	ErrKeyNotFound     = errors.New("key not found")
+	ErrNotImplemented  = errors.New("function not implemented")
 )
 
 type Options struct {
@@ -242,4 +243,8 @@ func (s Store) getAllKeys() ([]string, error) {
 		}
 	}
 	return keys, nil
+}
+
+func (s Store) Info() (types.StoreInfo, error) {
+	return types.StoreInfo{}, ErrNotImplemented
 }

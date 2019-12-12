@@ -7,14 +7,13 @@ import (
 	"sync"
 	"testing"
 
+	h "github.com/dustin/go-humanize"
+
 	"github.com/simar7/gokv/encoding"
-
-	"github.com/simar7/gokv/util"
-	bolt "go.etcd.io/bbolt"
-
 	"github.com/simar7/gokv/types"
-
+	"github.com/simar7/gokv/util"
 	"github.com/stretchr/testify/assert"
+	bolt "go.etcd.io/bbolt"
 )
 
 func setupStoreWithCodec(codec encoding.Codec) (*Store, *os.File, error) {
@@ -368,4 +367,18 @@ func TestStore_Scan(t *testing.T) {
 		assert.Equal(t, util.ErrEmptyBucketName, err)
 		assert.Empty(t, scanOut)
 	})
+}
+
+func TestStore_Info(t *testing.T) {
+	s, f, err := setupStore()
+	defer func() {
+		_ = f.Close()
+		_ = os.RemoveAll(f.Name())
+	}()
+	assert.NoError(t, err)
+
+	actualInfo, err := s.Info()
+	assert.NoError(t, err)
+	assert.Equal(t, "gokvbbolt", actualInfo.Name)
+	assert.Equal(t, "32 KiB", h.IBytes(uint64(actualInfo.Size)))
 }

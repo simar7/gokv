@@ -31,3 +31,8 @@ type ScanOutput struct {
 	Keys   []string `dynamodbav:"k"`
 	Values [][]byte `dynamodbav:"v"`
 }
+
+type StoreInfo struct {
+	Name string
+	Size int64
+}

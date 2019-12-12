@@ -2,6 +2,7 @@ package bbolt
 
 import (
 	"errors"
+	"os"
 
 	"github.com/simar7/gokv/types"
 
@@ -246,4 +247,16 @@ func (s Store) Scan(input types.ScanInput) (types.ScanOutput, error) {
 
 func (s Store) Close() error {
 	return s.db.Close()
+}
+
+func (s Store) Info() (types.StoreInfo, error) {
+	f, err := os.Stat(s.dbPath)
+	if err != nil {
+		return types.StoreInfo{}, err
+	}
+
+	return types.StoreInfo{
+		Name: s.rbc.Name,
+		Size: f.Size(),
+	}, nil
 }

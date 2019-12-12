@@ -25,7 +25,7 @@ var (
 
 var (
 	ErrMissingTableName = errors.New("table name is required")
-	//ErrNotImplemented   = errors.New("function not implemented")
+	ErrNotImplemented   = errors.New("function not implemented")
 )
 
 type Options struct {
@@ -244,4 +244,8 @@ func (s Store) Scan(input types.ScanInput) (types.ScanOutput, error) {
 	}
 
 	return scanOuput, nil
+}
+
+func (s Store) Info() (types.StoreInfo, error) {
+	return types.StoreInfo{}, ErrNotImplemented
 }
