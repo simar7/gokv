@@ -8,4 +8,5 @@ type Codec interface {
 var (
 	JSON = JSONCodec{}
 	Gob  = GobCodec{}
+	Raw  = RawCodec{}
 )
