@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	h "github.com/dustin/go-humanize"
 
@@ -435,4 +436,57 @@ func TestStore_DeleteBucket(t *testing.T) {
 			BucketName: "badbucket",
 		}))
 	})
+}
+
+func TestStore_Reap(t *testing.T) {
+	testCases := []struct {
+		name          string
+		ttl           time.Duration
+		expectedValue string
+	}{
+		{
+			name:          "happy path, item expires",
+			ttl:           time.Nanosecond * 1,
+			expectedValue: "",
+		},
+		{
+			name:          "happy path, item does not expire",
+			ttl:           time.Hour * 1,
+			expectedValue: "bar",
+		},
+		{
+			name:          "happy path, ttl not set",
+			expectedValue: "bar",
+		},
+	}
+
+	for _, tc := range testCases {
+		s, f, err := setupStore()
+		defer func() {
+			_ = f.Close()
+			_ = os.RemoveAll(f.Name())
+		}()
+		assert.NoError(t, err, tc.name)
+		s.ttl = tc.ttl
+
+		// set
+		assert.NoError(t, s.Set(types.SetItemInput{
+			Key:        "foo",
+			Value:      "bar",
+			BucketName: "reapbucket",
+		}), tc.name)
+
+		// reap expired items
+		assert.NoError(t, s.Reap("reapbucket"), tc.name)
+
+		// get
+		var actualOutput string
+		_, err = s.Get(types.GetItemInput{
+			Key:        "foo",
+			Value:      &actualOutput,
+			BucketName: "reapbucket",
+		})
+		assert.NoError(t, err, tc.name)
+		assert.Equal(t, tc.expectedValue, actualOutput, tc.name)
+	}
 }

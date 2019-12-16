@@ -1,8 +1,10 @@
 package bbolt
 
 import (
+	"bytes"
 	"errors"
 	"os"
+	"time"
 
 	"github.com/simar7/gokv/types"
 
@@ -22,12 +24,14 @@ type Options struct {
 	RootBucketName string
 	Path           string
 	Codec          encoding.Codec
+	ItemTTL        time.Duration
 }
 
 var DefaultOptions = Options{
 	RootBucketName: "gokvbbolt",
 	Path:           "bbolt.db",
 	Codec:          encoding.JSON,
+	ItemTTL:        -1, // indicates items never expire
 }
 
 type RootBucketConfig struct {
@@ -41,6 +45,7 @@ type Store struct {
 	rbc        RootBucketConfig
 	bucketName string
 	codec      encoding.Codec
+	ttl        time.Duration
 }
 
 func NewStore(options Options) (*Store, error) {
@@ -55,6 +60,9 @@ func NewStore(options Options) (*Store, error) {
 	}
 	if options.Codec == nil {
 		options.Codec = DefaultOptions.Codec
+	}
+	if options.ItemTTL == 0 {
+		options.ItemTTL = DefaultOptions.ItemTTL
 	}
 
 	if options.DB == nil {
@@ -81,6 +89,7 @@ func NewStore(options Options) (*Store, error) {
 	result.rbc.Name = options.RootBucketName
 	result.dbPath = options.Path
 	result.codec = options.Codec
+	result.ttl = options.ItemTTL
 	return &result, nil
 }
 
@@ -103,6 +112,13 @@ func (s *Store) createBucketIfNotExists(bucketName string) error {
 		_, err = root.CreateBucketIfNotExists([]byte(bucketName))
 		if err != nil {
 			return err
+		}
+
+		if s.ttl > 0 {
+			_, err = root.CreateBucketIfNotExists([]byte(bucketName + "_ttlBucket"))
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -136,6 +152,20 @@ func (s Store) Set(input types.SetItemInput) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	// set TTL on items if exists
+	if s.ttl > 0 {
+		err = s.db.Update(func(tx *bolt.Tx) error {
+			var b *bolt.Bucket
+			if b = tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(input.BucketName + "_ttlBucket")); b == nil { // Untested
+				return ErrBucketNotFound
+			}
+			return b.Put([]byte(time.Now().UTC().Format(time.RFC3339Nano)), []byte(input.Key))
+		})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -273,4 +303,56 @@ func (s Store) Info() (types.StoreInfo, error) {
 		Name: s.rbc.Name,
 		Size: f.Size(),
 	}, nil
+}
+
+// BoltDB does not support builtin item expiration
+// Reap takes care of handling TTL for items in BoltDB
+func (s Store) Reap(itemBucket string) error {
+	if s.ttl <= 0 {
+		return nil
+	}
+
+	keys, err := s.getExpired(s.ttl, itemBucket+"_ttlBucket")
+	if err != nil || len(keys) == 0 {
+		return err
+	}
+
+	return s.db.Update(func(tx *bolt.Tx) (err error) {
+		itemB := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(itemBucket))
+
+		for _, key := range keys {
+			if err = itemB.Delete(key); err != nil {
+				return
+			}
+		}
+		return
+	})
+}
+
+func (s Store) getExpired(maxAge time.Duration, ttlBucket string) ([][]byte, error) {
+	var keys [][]byte
+	var ttlKeys [][]byte
+
+	err := s.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(ttlBucket)).Cursor()
+
+		max := []byte(time.Now().UTC().Add(-maxAge).Format(time.RFC3339Nano))
+		for k, v := c.First(); k != nil && bytes.Compare(k, max) <= 0; k, v = c.Next() {
+			keys = append(keys, v)
+			ttlKeys = append(ttlKeys, k)
+		}
+		return nil
+	})
+
+	err = s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(ttlBucket))
+		for _, key := range ttlKeys {
+			if err = b.Delete(key); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return keys, err
 }
