@@ -184,16 +184,25 @@ func (s Store) BatchSet(input types.BatchSetItemInput) error {
 	}
 
 	err = s.db.Batch(func(tx *bolt.Tx) error {
-		var b, b2 *bolt.Bucket
+		var b, bItem, bttl *bolt.Bucket
 		if b = tx.Bucket([]byte(s.rbc.Name)); b == nil { // Untested
 			return ErrBucketNotFound
 		}
 
-		if b2, err = b.CreateBucketIfNotExists([]byte(input.BucketName)); err != nil { // Untested
+		if bItem, err = b.CreateBucketIfNotExists([]byte(input.BucketName)); err != nil { // Untested
 			return ErrBucketCreationFailed
 		}
 
-		return b2.Put([]byte(input.Keys[0]), data)
+		if s.ttl > 0 {
+			if bttl, err = b.CreateBucketIfNotExists([]byte(input.BucketName + "_ttlBucket")); err != nil {
+				return ErrBucketCreationFailed
+			}
+			if err := bttl.Put([]byte(time.Now().UTC().Format(time.RFC3339Nano)), []byte(input.Keys[0])); err != nil {
+				return err
+			}
+		}
+
+		return bItem.Put([]byte(input.Keys[0]), data)
 	})
 	if err != nil {
 		return err
@@ -317,15 +326,16 @@ func (s Store) Reap(itemBucket string) error {
 		return err
 	}
 
-	return s.db.Update(func(tx *bolt.Tx) (err error) {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		var err error
 		itemB := tx.Bucket([]byte(s.rbc.Name)).Bucket([]byte(itemBucket))
 
 		for _, key := range keys {
 			if err = itemB.Delete(key); err != nil {
-				return
+				return err
 			}
 		}
-		return
+		return nil
 	})
 }
 
